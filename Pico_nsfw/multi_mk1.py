@@ -5,18 +5,21 @@ import time
 from ssd1306 import SSD1306_I2C
 from ina219 import INA219
 
-
 # --- Hardware Configuration ---
 I2C_SDA_PIN = 0
 I2C_SCL_PIN = 1
+ADC_PIN = 26       # Pico GP26 (ADC0) for resistance measurement
 I2C_BUS_ID = 0
+BUTTON_PIN = 16    # GPIO pin connected to your push button
+DEBOUNCE_DELAY_MS = 200 # Milliseconds for button debouncing
+BUZZER_PIN = 17    # GPIO pin to control the NPN transistor for the buzzer
+
+###Parametros
 OLED_WIDTH = 128
 OLED_HEIGHT = 64
 OLED_ADDR = 0x3C
 INA219_ADDR = 0x40
 
-# --- Resistance Measurement Configuration ---
-ADC_PIN = 26       # Pico GP26 (ADC0) for resistance measurement
 R_REF = 55000.0    # Your measured reference resistor in Ohms (55 kOhm)
 V_SUPPLY = 3.3     # Pico's 3.3V OUT for the voltage divider
 CONTINUITY_THRESHOLD_OHMS = 3.0 # Resistance threshold for continuity beep
@@ -24,13 +27,6 @@ OPEN_CIRCUIT_THRESHOLD_OHMS = 500000.0 # 500 kOhm
 
 # --- ADC Averaging Configuration ---
 NUM_ADC_SAMPLES = 100 # Number of samples to average for ADC readings
-
-# --- Button Configuration ---
-BUTTON_PIN = 16    # GPIO pin connected to your push button
-DEBOUNCE_DELAY_MS = 200 # Milliseconds for button debouncing
-
-# --- Buzzer Configuration ---
-BUZZER_PIN = 17    # GPIO pin to control the NPN transistor for the buzzer
 
 # --- Measurement Modes ---
 MEASUREMENT_MODES = [
