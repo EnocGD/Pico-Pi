@@ -1,5 +1,8 @@
 import tkinter as tk
+
 import time
+
+import pico_funciones as pico
 
 ###Funciones
 
@@ -14,7 +17,72 @@ def act_status(cont,cin):
         lbl_status.config(text="Listo")
         crear_btn_inicio()
 def menu_aprender():
-    print("Noloshe")
+    global lbl_buscar
+    global mods_listos
+    global vtn_lect_mods
+
+    vtn_lect_mods=tk.Toplevel(vtn_menu)
+    vtn_lect_mods.geometry("480x340")
+    vtn_lect_mods.title("Leyendo modulongos")
+    vtn_lect_mods.resizable(False, False)
+    vtn_menu.withdraw()
+    lbl_buscar=tk.Label(vtn_lect_mods,
+                        text="Buscando...",
+                        font=("Arial", 22))
+    lbl_buscar.place(relx=0.5, rely=0.5, anchor='center')
+    act_mods("No")
+
+
+def aprender_quad():
+    vtn_modsq=tk.Toplevel(vtn_menu)
+    vtn_lect_mods.destroy()
+    vtn_modsq.geometry("480x340")
+    vtn_modsq.title("Modulos listos")
+    vtn_modsq.resizable(False, False)
+
+    ##Widgets
+    lbl_slot1=tk.Label(vtn_modsq,
+                       text="SLOT 1",
+                       font=("Arial", 14))
+    lbl_slot2=tk.Label(vtn_modsq,
+                       text="SLOT 2",
+                       font=("Arial", 14))
+    lbl_slot3=tk.Label(vtn_modsq,
+                       text="SLOT 3",
+                       font=("Arial", 14))
+    lbl_slot4=tk.Label(vtn_modsq,
+                       text="SLOT 4",
+                       font=("Arial", 14))
+    lbl_t1=tk.Label(vtn_modsq,
+                       text=mods_listos[1],
+                       font=("Arial", 10))
+    lbl_t2=tk.Label(vtn_modsq,
+                       text=mods_listos[2],
+                       font=("Arial", 10))
+    lbl_t3=tk.Label(vtn_modsq,
+                       text=mods_listos[3],
+                       font=("Arial", 10))
+    lbl_t4=tk.Label(vtn_modsq,
+                       text=mods_listos[4],
+                       font=("Arial", 10))
+
+    ##Colocar widgets
+    lbl_slot1.grid(column=0, row=0, columnspan=4,rowspan=2)
+    lbl_t1.grid(column=0, row=3, columnspan=4, rowspan=2)
+
+
+def act_mods(mods):
+    global mods_listos
+    if mods== "No":
+        lbl_buscar.config(text="Buscando")
+        lbl_buscar.after(5000, act_mods, pico.nop())
+    elif mods=="Nadota":
+        lbl_buscar.config(text="Actualizando")
+        mods_listos=pico.mods_disponibles()
+        lbl_buscar.after(3000, act_mods, mods_listos[1])
+    else:
+        lbl_buscar.config(text="Listo")
+        aprender_quad()
 
 def tbd2():
     print("calale")
@@ -66,6 +134,7 @@ def inicio():
 
 def crear_main_vtn():
     main_vtn.destroy()
+    global vtn_menu
     vtn_menu=tk.Tk()
 
     vtn_menu.title("Menu principal")
