@@ -67,8 +67,14 @@ def aprender_quad():
                        font=("Arial", 10))
 
     ##Colocar widgets
-    lbl_slot1.grid(column=0, row=0, columnspan=4,rowspan=2)
-    lbl_t1.grid(column=0, row=3, columnspan=4, rowspan=2)
+    lbl_slot1.grid(column=0, row=0, columnspan=16,rowspan=2,padx=5,pady=5)
+    lbl_t1.grid(column=0, row=3, columnspan=16, rowspan=2, padx=5)
+    lbl_slot2.grid(column=40, row=0, columnspan=16, rowspan=2,padx=150, pady=5)
+    lbl_t2.grid(column=40, row=3, columnspan=16, rowspan=2, padx=150)
+    lbl_slot3.grid(column=0, row=8, columnspan=16, rowspan=2, padx=5, pady=5)
+    lbl_t3.grid(column=0, row=11, columnspan=16, rowspan=2, padx=5)
+    lbl_slot4.grid(column=40, row=8, columnspan=16, rowspan=2, padx=150, pady=5)
+    lbl_t4.grid(column=40, row=11, columnspan=16, rowspan=2,padx=150)
 
 
 def act_mods(mods):
