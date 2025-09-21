@@ -1,10 +1,3 @@
-import pico_var
-from machine import Pin, I2C, ADC
-import time
-from ssd1306 import SSD1306_I2C
-from ina219 import INA219
-
-
 
 def pico_init():
     global i2c
