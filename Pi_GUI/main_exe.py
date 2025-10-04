@@ -1,6 +1,7 @@
 import tkinter as tk
 
 import time
+from tkinter import IntVar
 
 import pico_funciones as pico
 
@@ -16,6 +17,8 @@ def act_status(cont,cin):
     else:
         lbl_status.config(text="Listo")
         crear_btn_inicio()
+
+
 def menu_aprender():
     global lbl_buscar
     global mods_listos
@@ -30,7 +33,7 @@ def menu_aprender():
                         text="Buscando...",
                         font=("Arial", 22))
     lbl_buscar.place(relx=0.5, rely=0.5, anchor='center')
-    act_mods("No")
+    act_mods("Buscando")
 
 
 def aprender_quad():
@@ -41,49 +44,18 @@ def aprender_quad():
     vtn_modsq.resizable(False, False)
 
     ##Widgets
-    lbl_slot1=tk.Label(vtn_modsq,
-                       text="SLOT 1",
-                       font=("Arial", 14))
-    lbl_slot2=tk.Label(vtn_modsq,
-                       text="SLOT 2",
-                       font=("Arial", 14))
-    lbl_slot3=tk.Label(vtn_modsq,
-                       text="SLOT 3",
-                       font=("Arial", 14))
-    lbl_slot4=tk.Label(vtn_modsq,
-                       text="SLOT 4",
-                       font=("Arial", 14))
-    lbl_t1=tk.Label(vtn_modsq,
-                       text=mods_listos[1],
-                       font=("Arial", 10))
-    lbl_t2=tk.Label(vtn_modsq,
-                       text=mods_listos[2],
-                       font=("Arial", 10))
-    lbl_t3=tk.Label(vtn_modsq,
-                       text=mods_listos[3],
-                       font=("Arial", 10))
-    lbl_t4=tk.Label(vtn_modsq,
-                       text=mods_listos[4],
-                       font=("Arial", 10))
 
-    ##Colocar widgets
-    lbl_slot1.grid(column=0, row=0, columnspan=16,rowspan=2,padx=5,pady=5)
-    lbl_t1.grid(column=0, row=3, columnspan=16, rowspan=2, padx=5)
-    lbl_slot2.grid(column=40, row=0, columnspan=16, rowspan=2,padx=150, pady=5)
-    lbl_t2.grid(column=40, row=3, columnspan=16, rowspan=2, padx=150)
-    lbl_slot3.grid(column=0, row=8, columnspan=16, rowspan=2, padx=5, pady=5)
-    lbl_t3.grid(column=0, row=11, columnspan=16, rowspan=2, padx=5)
-    lbl_slot4.grid(column=40, row=8, columnspan=16, rowspan=2, padx=150, pady=5)
-    lbl_t4.grid(column=40, row=11, columnspan=16, rowspan=2,padx=150)
+
+
 
 
 def act_mods(mods):
     global mods_listos
-    if mods== "No":
+    if mods== "Buscando":
         lbl_buscar.config(text="Buscando")
         lbl_buscar.after(5000, act_mods, pico.nop())
-    elif mods=="Nadota":
-        lbl_buscar.config(text="Actualizando")
+    elif mods=="Esperando":
+        lbl_buscar.config(text="Conectando...")
         mods_listos=pico.mods_disponibles()
         lbl_buscar.after(3000, act_mods, mods_listos[1])
     else:
@@ -95,6 +67,104 @@ def tbd2():
 
 def instru():
     print("Dr profesor patricio")
+    global vtn_instru_menu
+    ###Creacion de ventana de menu instru
+    vtn_instru_menu= tk.Toplevel(vtn_menu)
+    vtn_instru_menu.geometry("480x340")
+    vtn_instru_menu.title("Menu de instrumentacion")
+    vtn_instru_menu.resizable(False, False)
+
+    ###Imagenes
+    global multi_icon
+    global osc_icon
+    global gen_icon
+    multi_icon=tk.PhotoImage(file="multimetro-digital.png")
+    osc_icon= tk.PhotoImage(file="osciloscopio.png")
+    gen_icon=tk.PhotoImage(file="generador.png")
+    #Widgets
+    btn_multi=tk.Button(vtn_instru_menu,
+                        text="Multimetro",
+                        command=multimetro,
+                        font=("Arial", 12),
+                        width=440, height=70)
+    btn_osc=tk.Button(vtn_instru_menu,
+                      text="Osciloscopio",
+                      command=osciloscopio,
+                      font=("Arial", 12),
+                      width=440, height=70)
+    btn_gen= tk.Button(vtn_instru_menu,
+                       text="Generador",
+                       command=generador,
+                       font=("Arial", 12),
+                       width=440, height=70)
+
+    lbl_menu=tk.Label(vtn_instru_menu,
+                      text="Gestiona",
+                      font=("Arial", 14))
+    ###Añadir iconos
+
+    btn_multi.config(image=multi_icon,
+                     compound=tk.LEFT,
+                     padx=5, pady=5)
+    btn_gen.config(image= gen_icon,
+                   compound=tk.LEFT,
+                   padx=5, pady=5)
+    btn_osc.config(image=osc_icon,
+                   compound=tk.LEFT,
+                   padx=5, pady=5)
+
+    lbl_menu.grid(column=15, row=0, columnspan=15, rowspan=1, padx=5, pady=5)
+    btn_multi.grid(column=10, row=1, columnspan=30, rowspan=10, padx=5, pady=5)
+    btn_gen.grid(column=10, row=12, columnspan=30, rowspan=10, padx=5, pady=5)
+    btn_osc.grid(column=10, row=22, columnspan=30, rowspan=10, padx=5, pady=5)
+
+
+def multimetro():
+    print("Hola aqui va el multimetro")
+    global lbl_lectura
+    global var
+    vtn_multi=tk.Toplevel(vtn_instru_menu)
+    vtn_multi.geometry("480x340")
+    vtn_multi.title("Multimetro")
+    vtn_multi.resizable(False, False)
+
+    var=IntVar()
+
+    ###Widgets
+    rb_Voltaje=tk.Radiobutton(vtn_multi, text="Voltaje",
+                              variable=var, value=1)
+    rb_Corriente=tk.Radiobutton(vtn_multi, text="Corriente",
+                                variable=var, value=2)
+    rb_resistencia=tk.Radiobutton(vtn_multi, text="Resistencia",
+                                  variable=var, value=3)
+    lbl_lectura=tk.Label(vtn_multi, text="Lectura", font=("Arial",50))
+
+    ###Colocar widgets
+    lbl_lectura.place(relx=0.5, rely=0.5, anchor='center')
+    rb_Voltaje.place(relx=0.25, rely=0.8, anchor= 'center')
+    rb_resistencia.place(relx=0.5, rely=0.8, anchor= 'center')
+    rb_Corriente.place(relx=0.75, rely=0.8, anchor= 'center')
+    multi_lectura(4)
+
+
+def multi_lectura(boton):
+    if boton==1:
+        lbl_lectura.config(text="Voltaje")
+
+    elif boton == 3:
+        lbl_lectura.config(text="Resistencia")
+    elif boton==2:
+        lbl_lectura.config(text="Corriente")
+    else:
+        lbl_lectura.config(text="Elige que medir")
+    lbl_lectura.after(500, multi_lectura, var.get())
+    print(var)
+
+def osciloscopio():
+    print("Hola, soy scoopy")
+
+def generador():
+    print("Hola soy un generador")
 
 def docs():
     print("Aqui va la documentacion")

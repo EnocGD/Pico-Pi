@@ -21,6 +21,8 @@ def mods_disponibles():
     modulongos=["Listo","OPAMP","COMBINACIONALES","VACIO", "VACIO"]
     return modulongos
 
+def escribe(Mensaje):
+    print(Mensaje)
 
 def nop():
-    return "Nadota"
+    return "Espera"
