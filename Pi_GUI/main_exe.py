@@ -3,8 +3,14 @@ import tkinter as tk
 import time
 from tkinter import IntVar
 
+from yaml import compose_all
+
 import pico_funciones as pico
 
+
+###Variables
+global tema
+tema="TBD"
 ###Funciones
 
 #Modificar para mostrar inicializacion de la pico y del sistema, Modificar con try, except
@@ -137,13 +143,20 @@ def multimetro():
                                 variable=var, value=2)
     rb_resistencia=tk.Radiobutton(vtn_multi, text="Resistencia",
                                   variable=var, value=3)
-    lbl_lectura=tk.Label(vtn_multi, text="Lectura", font=("Arial",50))
+    lbl_lectura=tk.Label(vtn_multi, text="Lectura", font=("Arial",30))
+
+    btn_gen= tk.Button(vtn_multi, text="Generador", command=generador)
+    btn_osc=tk.Button(vtn_multi, text="Osciloscopio", command=osciloscopio)
+    btn_docs= tk.Button(vtn_multi, text="Apuntes", command=docs)
 
     ###Colocar widgets
     lbl_lectura.place(relx=0.5, rely=0.5, anchor='center')
     rb_Voltaje.place(relx=0.25, rely=0.8, anchor= 'center')
     rb_resistencia.place(relx=0.5, rely=0.8, anchor= 'center')
     rb_Corriente.place(relx=0.75, rely=0.8, anchor= 'center')
+    btn_gen.place(relx=0.95, rely=0.1, anchor='ne')
+    btn_osc.place(relx=0.95, rely=0.2, anchor='ne')
+    btn_docs.place(relx=0.95, rely=0.3, anchor='ne')
     multi_lectura(4)
 
 
@@ -162,13 +175,161 @@ def multi_lectura(boton):
 
 def osciloscopio():
     print("Hola, soy scoopy")
+    vtn_osc=tk.Toplevel(vtn_instru_menu)
+    vtn_osc.geometry("480x340")
+    vtn_osc.title("Como usar scoopy")
+    vtn_osc.resizable(False, False)
+    txt_usame=tk.Text(vtn_osc, width=45, height=15)
+
+    btn_multi=tk.Button(vtn_osc, text="Multimetro", command=multimetro)
+    btn_gen=tk.Button(vtn_osc, text="Generador", command=generador)
+    btn_docs=tk.Button(vtn_osc, text="Apuntes", command=docs)
+
+    btn_gen.place(relx=0.95, rely=0.1, anchor='ne')
+    btn_multi.place(relx=0.95, rely=0.2, anchor='ne')
+    btn_docs.place(relx=0.95, rely=0.3, anchor='ne')
+    txt_usame.grid(column=0, row=0)
+    txt_usame.insert("1.0","Soy la documentacion")
 
 def generador():
+    ###La amplitud no se puede controlar
+    global lbl_generador
+    global frec_gen
+    global signal
+    global flecha_arriba
+    global flecha_abajo
     print("Hola soy un generador")
+    gen_vtn=tk.Toplevel(vtn_instru_menu)
+    gen_vtn.geometry("480x340")
+    gen_vtn.title("Generador de funciones")
+    gen_vtn.resizable(False, False)
+
+    flecha_arriba=tk.PhotoImage(file="angulo-pequeno-hacia-arriba.png")
+    flecha_abajo=tk.PhotoImage(file="angulo-hacia-abajo.png")
+
+    ##Widgets
+    lbl_generador= tk.Label(gen_vtn,
+                            text="Generador",
+                            font=("Arial", 20))
+    btn_sin_sel=tk.Button(gen_vtn, text="Sin", command=seno)
+    btn_tri_sel=tk.Button(gen_vtn, text="Triangular", command=triangular)
+    btn_sqr_sel=tk.Button(gen_vtn, text="Cuadrada", command=sqr_w)
+    lbl_tmp=tk.Label(gen_vtn, text="aguantala", font=("Arial", 10))
+    btn_multi=tk.Button(gen_vtn, text="Multimetro", command=multimetro, width=10)
+    btn_osc=tk.Button(gen_vtn, text="Osciloscopio", command=osciloscopio, width=10)
+    btn_docs=tk.Button(gen_vtn, text="Apuntes", command=docs, width=10)
+    btn_subir=tk.Button(gen_vtn, command=frec_aumentar)
+    btn_bajar=tk.Button(gen_vtn, command=frec_bajar)
+    btn_subir.config(image=flecha_arriba, compound=tk.TOP)
+    btn_bajar.config(image=flecha_abajo, compound=tk.TOP)
+    btn_sin_sel.config(width=10)
+    btn_sqr_sel.config(width=10)
+    btn_tri_sel.config(width=10)
+
+    frec_gen=1000
+    signal="Senoidal"
+    ##Poner widgets
+    lbl_generador.grid(column=10, row=5, columnspan=20, rowspan=10)
+    btn_sqr_sel.grid(column=0, row= 30, columnspan=10, rowspan=2, padx=2)
+    btn_sin_sel.grid(column=10, row=30, columnspan=10, rowspan=2, padx=2)
+    btn_tri_sel.grid(column=20, row=30, columnspan=10, rowspan=2, padx=2)
+    btn_subir.grid(column=0, row=35, columnspan=2)
+    btn_bajar.grid(column=3, row=35, columnspan=2)
+    btn_multi.place(relx=0.95, rely=0.1, anchor="ne")
+    btn_osc.place(relx=0.95, rely=0.2, anchor="ne")
+    btn_docs.place(relx=0.95, rely=0.3, anchor="ne")
+
 
 def docs():
     print("Aqui va la documentacion")
+    global lbl_elegir
 
+    if tema=="TBD":
+        global docs_var
+        docs_var=IntVar()
+        vtn_docs_menu=tk.Toplevel(vtn_menu)
+        vtn_docs_menu.geometry("480x340")
+        vtn_docs_menu.title("Documentacion")
+        vtn_docs_menu.resizable(False, False)
+
+        ###Menu de eleccion de tema
+        lbl_elegir=tk.Label(vtn_docs_menu, text="Elige si quieres \nrepasar un tema\n o hacer una practica")
+        rbtn_practica=tk.Radiobutton(vtn_docs_menu, text="Practicas",
+                                     variable=docs_var, value=1)
+        rbtn_Temas=tk.Radiobutton(vtn_docs_menu, text="Temas",
+                                  variable=docs_var, value=2)
+
+        #Colocar widgets
+        lbl_elegir.pack(side="top")
+        rbtn_practica.place(relx=0.1, rely=0.2, anchor="center")
+        rbtn_Temas.place(relx=0.9, rely=0.2, anchor="center")
+        doc_menu(0)
+
+    else:
+        opcion=0
+        vtn_apunte=tk.Toplevel(vtn_menu)
+        vtn_apunte.geometry("480x340")
+        vtn_apunte.title(tema)
+        ###Widgets
+        txt_apunte=tk.Text(vtn_apunte,width=40, height=20)
+        btn_atras=tk.Button(vtn_apunte, text="Atras", command=doc_atras)
+        btn_adelante=tk.Button(vtn_apunte, text="Siguiente", command=doc_adelante)
+
+        ###Poner widgets
+        txt_apunte.grid(column=0, row=0, columnspan=40, rowspan=20)
+        btn_atras.grid(column=5, row= 30)
+        btn_adelante.grid(column=10, row=30)
+
+        ###Insertar texto
+def doc_menu(boton):
+    if boton==0:
+        print("Aun no")
+    elif boton==2:
+        lbl_elegir.config(text="Temones")
+    elif boton==1:
+        lbl_elegir.config(text="Practiconas")
+    lbl_elegir.after(300, doc_menu, docs_var.get())
+
+
+def doc_adelante():
+    print("Adelante")
+
+def doc_atras():
+    print("Atras")
+
+
+def seno():
+    print("Saca un seno")
+    global  signal
+    signal="Senoidal"
+    texto=f"Senoidal {frec_gen}Hz"
+    lbl_generador.config(text=texto)
+
+def triangular():
+    global signal
+    signal="Triangular"
+    texto=f"Triangular {frec_gen}Hz"
+    print("Soy un triangulo :)")
+    lbl_generador.config(text=texto)
+
+def sqr_w():
+    global signal
+    signal="Cuadrada"
+    print("Cuadrado")
+    texto=f"Cuadrada {frec_gen}Hz"
+    lbl_generador.config(text=texto)
+
+def frec_aumentar():
+    global frec_gen
+    frec_gen+= 10
+    texto=f"{signal} {frec_gen}Hz"
+    lbl_generador.config(text=texto)
+
+def frec_bajar():
+    global frec_gen
+    frec_gen-=10
+    texto=f"{signal} {frec_gen}Hz"
+    lbl_generador.config(text=texto)
 
 def bienvenida():
     global main_vtn
