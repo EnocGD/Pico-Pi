@@ -1,9 +1,9 @@
 import tkinter as tk
-
 import time
 from tkinter import IntVar
+import fitz
+from PIL import Image, ImageTk
 
-from yaml import compose_all
 
 import pico_funciones as pico
 
@@ -11,24 +11,85 @@ import pico_funciones as pico
 ###Variables
 global tema
 
+pag_cont=0
+pag_total=0
 tema="TBD"
 indice_txt="Modulos_registrados.txt"
 indice_temas_txt="Temas.txt"
 mods_listos=["Vacio", "Vacio", "Vacio", "Vacio"]
 ###Funciones
+"""
+ __       _______   ______ .___________.  ______   .______      
+|  |     |   ____| /      ||           | /  __  \  |   _  \     
+|  |     |  |__   |  ,----'`---|  |----`|  |  |  | |  |_)  |    
+|  |     |   __|  |  |         |  |     |  |  |  | |      /     
+|  `----.|  |____ |  `----.    |  |     |  `--'  | |  |\  \----.
+|_______||_______| \______|    |__|      \______/  | _| `._____|
 
-#Modificar para mostrar inicializacion de la pico y del sistema, Modificar con try, except
-def act_status(cont,cin):
-
-    if cin<cont:
-        cin+=1
-        lbl_status.config(text=str(cin))
-        lbl_status.after(1000,act_status,cont,cin)
+.______    _______   _______                                    
+|   _  \  |       \ |   ____|                                   
+|  |_)  | |  .--.  ||  |__                                      
+|   ___/  |  |  |  ||   __|                                     
+|  |      |  '--'  ||  |                                        
+| _|      |_______/ |__|                                        
+"""
+def leer_pdf(ruta,pagina):
+    ###Vtn de lector
+    global lbl_pdf
+    vtn_pdf=tk.Toplevel(vtn_menu)
+    vtn_pdf.geometry("480x340")
+    vtn_pdf.title("Lector PDF by CTM")
+    vtn_pdf.resizable(False, False)
+    vtn_pdf.config(bg="black")
+    ###Primera hoja
+    img_tk = ImageTk.PhotoImage(pdf2img("DummyPracticePPTX.pdf", 0))
+    lbl_pdf = tk.Label(vtn_pdf, image=img_tk)
+    lbl_pdf.image = img_tk
+    ###Botones
+    btn_atras=tk.Button(vtn_pdf, text="Atras", command=pdf_atras)
+    btn_adelante=tk.Button(vtn_pdf, text="Adelante", command=pdf_adelante)
+    ###Posicionamiento de botones
+    btn_atras.place(relx=0.2, rely=0.9, anchor="center")
+    btn_adelante.place(relx=0.8, rely=0.9, anchor="center")
+    lbl_pdf.pack()
+##############################################################################################################
+###Botones PDF
+def pdf_adelante():
+    global pag_cont
+    if pag_cont==pag_total:
+        print("Ya no hay mas padrino")
     else:
-        lbl_status.config(text="Listo")
-        crear_btn_inicio()
+        print("Dondevan")
+        pag_cont+=1
+        img_tk=ImageTk.PhotoImage(pdf2img("DummyPracticePPTX.pdf", pag_cont))
+        lbl_pdf.config(image=img_tk)
+        lbl_pdf.image=img_tk
+##############################################################################################################
+def pdf_atras():
+    global pag_cont
+    if pag_cont==0:
+        print("No hay mas atras")
+    else:
+        print("Dondevan")
+        pag_cont -= 1
+        img_tk = ImageTk.PhotoImage(pdf2img("DummyPracticePPTX.pdf", pag_cont))
+        lbl_pdf.config(image=img_tk)
+        lbl_pdf.image = img_tk
+##############################################################################################################
+###Convertidor de PDF a imagen
+def pdf2img(ruta, pag):
+    global pag_total
+    pdf = fitz.open(ruta)
+    if pag_total == 0:
+        pag_total = pdf.page_count - 1
 
-
+    page = pdf[pag]
+    target_w, target_h = 480, 340
+    pix = page.get_pixmap(matrix=fitz.Matrix(target_w / page.rect.width, target_h / page.rect.height))
+    img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+    return img
+##############################################################################################################
+###Lector de modulos
 def menu_aprender():
     global lbl_buscar
     global mods_listos
@@ -38,14 +99,14 @@ def menu_aprender():
     vtn_lect_mods.geometry("480x340")
     vtn_lect_mods.title("Leyendo modulongos")
     vtn_lect_mods.resizable(False, False)
-    vtn_menu.withdraw()
+    ###vtn_menu.withdraw()
     lbl_buscar=tk.Label(vtn_lect_mods,
                         text="Buscando...",
                         font=("Arial", 22))
     lbl_buscar.place(relx=0.5, rely=0.5, anchor='center')
     act_mods("Buscando")
-
-
+##############################################################################################################
+###Cuadricula con modulos
 def aprender_quad():
     global vtn_modsq
     global quad_mod
@@ -55,8 +116,6 @@ def aprender_quad():
     vtn_modsq.geometry("480x340")
     vtn_modsq.title("Modulos listos")
     vtn_modsq.resizable(False, False)
-
-
     ##Widgets
     rdtbn_mod1=tk.Radiobutton(vtn_modsq, text=mods_listos[0],
                               variable=quad_mod, value=1,font=("Arial", 20))
@@ -67,13 +126,13 @@ def aprender_quad():
     rdtbn_mod4=tk.Radiobutton(vtn_modsq, text=mods_listos[3],
                               variable=quad_mod, value=4, font=("Arial", 20))
     practicar(0)
+    ###Posicionamiento de radiobutton
     rdtbn_mod1.place(relx=0.25, rely=0.25, anchor='center')
     rdtbn_mod2.place(relx=0.75, rely=0.25, anchor='center')
     rdtbn_mod3.place(relx=0.25, rely=0.75, anchor='center')
     rdtbn_mod4.place(relx=0.75, rely=0.75, anchor='center')
-
-
-
+##############################################################################################################
+###Seleccion de modulo
 def practicar(modulo):
     if modulo==0:
         print("nada")
@@ -86,8 +145,14 @@ def practicar(modulo):
     elif modulo==4:
         print(mods_listos[3])
     vtn_modsq.after(300, practicar, quad_mod.get())
-
+##############################################################################################################
+###Actualizar modulos
 def act_mods(mods):
+    '''
+    I2C scan para confirmar que modulos hay conectados
+    Verificar que existan los archivos correspondientes a los modulos incluidos
+    Notificar si hay un modulo sin informacion
+    '''
     global mods_listos
     if mods== "Buscando":
         lbl_buscar.config(text="Buscando")
@@ -99,7 +164,8 @@ def act_mods(mods):
     else:
         lbl_buscar.config(text="Listo")
         aprender_quad()
-
+##############################################################################################################
+###Para ingresar informacion sobre modulos o temas
 def tbd2():
     print("calale")
     ###Para añadir documentacion
@@ -143,7 +209,8 @@ def tbd2():
     rdbtn_practica.place(relx=0.7, rely=0.8, anchor="center")
     lbl_doc_status.place(relx=0.4, rely=0.9, anchor="center")
     ##Posible añadir preview
-
+##############################################################################################################
+###Buscar archivos
 def buscar_ref():
     print("Ahorita buscamos padre")
     if f:
@@ -155,7 +222,8 @@ def buscar_ref():
                 break
     else:
         lbl_doc_status.config(text="Aun no existe")
-
+##############################################################################################################
+###Crear archivos de referencia, por ahora solo cuenta con indice, falta crear temas y practicas
 def crear_ref():
     print("gestiono")
     nombre=nombre_entry.get()
@@ -176,8 +244,23 @@ def crear_ref():
             lbl_doc_status.config(text="Datos guardados")
         else:
             lbl_doc_status.config(text="Rellena los campos por favor")
+##############################################################################################################
+"""
+ __  .__   __.      _______.___________..______       __    __  .___  ___.    
+|  | |  \ |  |     /       |           ||   _  \     |  |  |  | |   \/   |    
+|  | |   \|  |    |   (----`---|  |----`|  |_)  |    |  |  |  | |  \  /  |    
+|  | |  . `  |     \   \       |  |     |      /     |  |  |  | |  |\/|  |    
+|  | |  |\   | .----)   |      |  |     |  |\  \----.|  `--'  | |  |  |  |    
+|__| |__| \__| |_______/       |__|     | _| `._____| \______/  |__|  |__|    
 
-
+ _______ .__   __. .___________.    ___       ______  __    ______   .__   __.
+|   ____||  \ |  | |           |   /   \     /      ||  |  /  __  \  |  \ |  |
+|  |__   |   \|  | `---|  |----`  /  ^  \   |  ,----'|  | |  |  |  | |   \|  |
+|   __|  |  . `  |     |  |      /  /_\  \  |  |     |  | |  |  |  | |  . `  |
+|  |____ |  |\   |     |  |     /  _____  \ |  `----.|  | |  `--'  | |  |\   |
+|_______||__| \__|     |__|    /__/     \__\ \______||__|  \______/  |__| \__|
+"""
+###Menu de instrumentacion
 def instru():
     print("Dr profesor patricio")
     global vtn_instru_menu
@@ -186,7 +269,6 @@ def instru():
     vtn_instru_menu.geometry("480x340")
     vtn_instru_menu.title("Menu de instrumentacion")
     vtn_instru_menu.resizable(False, False)
-
     ###Imagenes
     global multi_icon
     global osc_icon
@@ -210,12 +292,10 @@ def instru():
                        command=generador,
                        font=("Arial", 12),
                        width=440, height=70)
-
     lbl_menu=tk.Label(vtn_instru_menu,
                       text="Gestiona",
                       font=("Arial", 14))
     ###Añadir iconos
-
     btn_multi.config(image=multi_icon,
                      compound=tk.LEFT,
                      padx=5, pady=5)
@@ -225,13 +305,13 @@ def instru():
     btn_osc.config(image=osc_icon,
                    compound=tk.LEFT,
                    padx=5, pady=5)
-
+    ###Posicionar widgets
     lbl_menu.grid(column=15, row=0, columnspan=15, rowspan=1, padx=5, pady=5)
     btn_multi.grid(column=10, row=1, columnspan=30, rowspan=10, padx=5, pady=5)
     btn_gen.grid(column=10, row=12, columnspan=30, rowspan=10, padx=5, pady=5)
     btn_osc.grid(column=10, row=22, columnspan=30, rowspan=10, padx=5, pady=5)
-
-
+##############################################################################################################
+###Multimetro
 def multimetro():
     print("Hola aqui va el multimetro")
     global lbl_lectura
@@ -240,9 +320,7 @@ def multimetro():
     vtn_multi.geometry("480x340")
     vtn_multi.title("Multimetro")
     vtn_multi.resizable(False, False)
-
     var=IntVar()
-
     ###Widgets
     rb_Voltaje=tk.Radiobutton(vtn_multi, text="Voltaje",
                               variable=var, value=1)
@@ -257,7 +335,6 @@ def multimetro():
     btn_gen= tk.Button(vtn_multi, text="Generador", command=generador)
     btn_osc=tk.Button(vtn_multi, text="Osciloscopio", command=osciloscopio)
     btn_docs= tk.Button(vtn_multi, text="Apuntes", command=docs)
-
     ###Colocar widgets
     lbl_lectura.place(relx=0.5, rely=0.5, anchor='center')
     rb_Voltaje.place(relx=0.2, rely=0.8, anchor= 'center')
@@ -268,8 +345,8 @@ def multimetro():
     btn_osc.place(relx=0.95, rely=0.2, anchor='ne')
     btn_docs.place(relx=0.95, rely=0.3, anchor='ne')
     multi_lectura(4)
-
-
+##############################################################################################################
+###Selector de opciones del multimetro
 def multi_lectura(boton):
     if boton==1:
         lbl_lectura.config(text="Voltaje")
@@ -283,8 +360,8 @@ def multi_lectura(boton):
     else:
         lbl_lectura.config(text="Elige que medir")
     lbl_lectura.after(500, multi_lectura, var.get())
-
-
+##############################################################################################################
+###Informacion del osciloscopio, probablemente se elimine y se use la ventana de pdf
 def osciloscopio():
     print("Hola, soy scoopy")
     vtn_osc=tk.Toplevel(vtn_instru_menu)
@@ -302,7 +379,8 @@ def osciloscopio():
     btn_docs.place(relx=0.95, rely=0.3, anchor='ne')
     txt_usame.grid(column=0, row=0)
     txt_usame.insert("1.0","Soy la documentacion")
-
+##############################################################################################################
+###Generador de funciones
 def generador():
     ###La amplitud no se puede controlar
     global lbl_generador
@@ -315,10 +393,9 @@ def generador():
     gen_vtn.geometry("480x340")
     gen_vtn.title("Generador de funciones")
     gen_vtn.resizable(False, False)
-
+    ###Iconos
     flecha_arriba=tk.PhotoImage(file="angulo-pequeno-hacia-arriba.png")
     flecha_abajo=tk.PhotoImage(file="angulo-hacia-abajo.png")
-
     ##Widgets
     lbl_generador= tk.Label(gen_vtn,
                             text="Generador",
@@ -332,12 +409,12 @@ def generador():
     btn_docs=tk.Button(gen_vtn, text="Apuntes", command=docs, width=10)
     btn_subir=tk.Button(gen_vtn, command=frec_aumentar)
     btn_bajar=tk.Button(gen_vtn, command=frec_bajar)
+    ###Añadir iconos
     btn_subir.config(image=flecha_arriba, compound=tk.TOP)
     btn_bajar.config(image=flecha_abajo, compound=tk.TOP)
     btn_sin_sel.config(width=10)
     btn_sqr_sel.config(width=10)
     btn_tri_sel.config(width=10)
-
     frec_gen=1000
     signal="Senoidal"
     ##Poner widgets
@@ -350,66 +427,8 @@ def generador():
     btn_multi.place(relx=0.95, rely=0.1, anchor="ne")
     btn_osc.place(relx=0.95, rely=0.2, anchor="ne")
     btn_docs.place(relx=0.95, rely=0.3, anchor="ne")
-
-
-def docs():
-    print("Aqui va la documentacion")
-    global lbl_elegir
-
-    if tema=="TBD":
-        global docs_var
-        docs_var=IntVar()
-        vtn_docs_menu=tk.Toplevel(vtn_menu)
-        vtn_docs_menu.geometry("480x340")
-        vtn_docs_menu.title("Documentacion")
-        vtn_docs_menu.resizable(False, False)
-
-        ###Menu de eleccion de tema
-        lbl_elegir=tk.Label(vtn_docs_menu, text="Elige si quieres \nrepasar un tema\n o hacer una practica")
-        rbtn_practica=tk.Radiobutton(vtn_docs_menu, text="Practicas",
-                                     variable=docs_var, value=1)
-        rbtn_Temas=tk.Radiobutton(vtn_docs_menu, text="Temas",
-                                  variable=docs_var, value=2)
-
-        #Colocar widgets
-        lbl_elegir.pack(side="top")
-        rbtn_practica.place(relx=0.1, rely=0.2, anchor="center")
-        rbtn_Temas.place(relx=0.9, rely=0.2, anchor="center")
-        doc_menu(0)
-
-    else:
-        opcion=0
-        vtn_apunte=tk.Toplevel(vtn_menu)
-        vtn_apunte.geometry("480x340")
-        vtn_apunte.title(tema)
-        ###Widgets
-        txt_apunte=tk.Text(vtn_apunte,width=40, height=20)
-        btn_atras=tk.Button(vtn_apunte, text="Atras", command=doc_atras)
-        btn_adelante=tk.Button(vtn_apunte, text="Siguiente", command=doc_adelante)
-
-        ###Poner widgets
-        txt_apunte.grid(column=0, row=0, columnspan=40, rowspan=20)
-        btn_atras.grid(column=5, row= 30)
-        btn_adelante.grid(column=10, row=30)
-
-        ###Insertar texto
-def doc_menu(boton):
-    if boton==0:
-        print("Aun no")
-    elif boton==2:
-        lbl_elegir.config(text="Temones")
-    elif boton==1:
-        lbl_elegir.config(text="Practiconas")
-    lbl_elegir.after(300, doc_menu, docs_var.get())
-
-
-def doc_adelante():
-    print("Adelante")
-
-def doc_atras():
-    print("Atras")
-
-
+##############################################################################################################
+###Funciones del generador
 def seno():
     print("Saca un seno")
     global  signal
@@ -442,7 +461,78 @@ def frec_bajar():
     frec_gen-=10
     texto=f"{signal} {frec_gen}Hz"
     lbl_generador.config(text=texto)
+##############################################################################################################
+###Menu de documentacion
+def docs():
+    '''
+    Indice de temas y practicas
+    Combobox o lista
+    Modificar, podria hacer con dos ventanas, una de eleccion de tema y despues ir al lector PDF
+    '''
+    print("Aqui va la documentacion")
+    global lbl_elegir
+    if tema=="TBD":
+        global docs_var
+        docs_var=IntVar()
+        vtn_docs_menu=tk.Toplevel(vtn_menu)
+        vtn_docs_menu.geometry("480x340")
+        vtn_docs_menu.title("Documentacion")
+        vtn_docs_menu.resizable(False, False)
+        ###Menu de eleccion de tema
+        lbl_elegir=tk.Label(vtn_docs_menu, text="Elige si quieres \nrepasar un tema\n o hacer una practica")
+        rbtn_practica=tk.Radiobutton(vtn_docs_menu, text="Practicas",
+                                     variable=docs_var, value=1)
+        rbtn_Temas=tk.Radiobutton(vtn_docs_menu, text="Temas",
+                                  variable=docs_var, value=2)
+        #Colocar widgets
+        lbl_elegir.pack(side="top")
+        rbtn_practica.place(relx=0.1, rely=0.2, anchor="center")
+        rbtn_Temas.place(relx=0.9, rely=0.2, anchor="center")
+        doc_menu(0)
+    else:
+        opcion=0
+        vtn_apunte=tk.Toplevel(vtn_menu)
+        vtn_apunte.geometry("480x340")
+        vtn_apunte.title(tema)
+        ###Widgets
+        txt_apunte=tk.Text(vtn_apunte,width=40, height=20)
+        btn_atras=tk.Button(vtn_apunte, text="Atras", command=doc_atras)
+        btn_adelante=tk.Button(vtn_apunte, text="Siguiente", command=doc_adelante)
+        ###Poner widgets
+        txt_apunte.grid(column=0, row=0, columnspan=40, rowspan=20)
+        btn_atras.grid(column=5, row= 30)
+        btn_adelante.grid(column=10, row=30)
+        ###Insertar texto
+##############################################################################################################
+###Rellena el menu con temas o practicas
+def doc_menu(boton):
+    if boton==0:
+        print("Aun no")
+    elif boton==2:
+        lbl_elegir.config(text="Temones")
+    elif boton==1:
+        lbl_elegir.config(text="Practiconas")
+    lbl_elegir.after(300, doc_menu, docs_var.get())
 
+def doc_adelante():
+    print("Adelante")
+
+def doc_atras():
+    print("Atras")
+
+
+
+
+
+
+"""
+ __  .__   __.  __    ______  __    ______  
+|  | |  \ |  | |  |  /      ||  |  /  __  \ 
+|  | |   \|  | |  | |  ,----'|  | |  |  |  |
+|  | |  . `  | |  | |  |     |  | |  |  |  |
+|  | |  |\   | |  | |  `----.|  | |  `--'  |
+|__| |__| \__| |__|  \______||__|  \______/ 
+"""
 def bienvenida():
     global main_vtn
     global lbl_status
@@ -471,6 +561,20 @@ def bienvenida():
 
     main_vtn.mainloop()
 
+def act_status(cont, cin):
+    '''
+    Establecer comunicacion con la Pico por UART
+    I2C scan para identificar los componentes en la red i2c, memorias(modulos) y multi
+    Verificar archivos correspondientes a los modulos
+    '''
+    if cin < cont:
+        cin += 1
+        lbl_status.config(text=str(cin))
+        lbl_status.after(1000, act_status, cont, cin)
+    else:
+        lbl_status.config(text="Listo")
+        crear_btn_inicio()
+
 def crear_btn_inicio():
     btn_inicio=tk.Button(main_vtn,
                          text="Iniciar",
@@ -480,12 +584,25 @@ def crear_btn_inicio():
 def inicio():
     print("Continuamooos")
     crear_main_vtn()
+"""
+.___  ___.  _______ .__   __.  __    __                                  
+|   \/   | |   ____||  \ |  | |  |  |  |                                 
+|  \  /  | |  |__   |   \|  | |  |  |  |                                 
+|  |\/|  | |   __|  |  . `  | |  |  |  |                                 
+|  |  |  | |  |____ |  |\   | |  `--'  |                                 
+|__|  |__| |_______||__| \__|  \______/                                  
 
+.______   .______       __  .__   __.   ______  __  .______      ___     
+|   _  \  |   _  \     |  | |  \ |  |  /      ||  | |   _  \    /   \    
+|  |_)  | |  |_)  |    |  | |   \|  | |  ,----'|  | |  |_)  |  /  ^  \   
+|   ___/  |      /     |  | |  . `  | |  |     |  | |   ___/  /  /_\  \  
+|  |      |  |\  \----.|  | |  |\   | |  `----.|  | |  |     /  _____  \ 
+| _|      | _| `._____||__| |__| \__|  \______||__| | _|    /__/     \__\
+"""
 def crear_main_vtn():
     main_vtn.destroy()
     global vtn_menu
     vtn_menu=tk.Tk()
-
     vtn_menu.title("Menu principal")
     vtn_menu.geometry("480x340")
     vtn_menu.resizable(False, False)
@@ -494,7 +611,6 @@ def crear_main_vtn():
     docs_icon= tk.PhotoImage(file="docs.png")
     aprender_icon= tk.PhotoImage(file="aprender.png")
     instru_icon=tk.PhotoImage(file="medicion.png")
-
     ##Widgets
     btn_aprender=tk.Button(vtn_menu,
                        text="Aprendamos",
@@ -521,14 +637,11 @@ def crear_main_vtn():
     btn_tbd2.config(image=ajalas_icon,
                     compound=tk.TOP,
                     padx=5, pady=5)
-
-
     ##Colocar botones de gomita
     btn_aprender.grid(column=6, row=0, columnspan=6,rowspan=2, padx=5, pady=5)
     btn_ins.grid(column=18, row=0, columnspan=6, rowspan=2, pady=5)
     btn_docs.grid(column=6, row=4, columnspan=6, rowspan=2, padx=5)
     btn_tbd2.grid(column=18, row=4, columnspan=6, rowspan=2)
-
     vtn_menu.mainloop()
 
 bienvenida()
