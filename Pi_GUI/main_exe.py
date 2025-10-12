@@ -10,7 +10,11 @@ import pico_funciones as pico
 
 ###Variables
 global tema
+
 tema="TBD"
+indice_txt="Modulos_registrados.txt"
+indice_temas_txt="Temas.txt"
+mods_listos=["Vacio", "Vacio", "Vacio", "Vacio"]
 ###Funciones
 
 #Modificar para mostrar inicializacion de la pico y del sistema, Modificar con try, except
@@ -43,17 +47,45 @@ def menu_aprender():
 
 
 def aprender_quad():
+    global vtn_modsq
+    global quad_mod
+    quad_mod=IntVar()
     vtn_modsq=tk.Toplevel(vtn_menu)
     vtn_lect_mods.destroy()
     vtn_modsq.geometry("480x340")
     vtn_modsq.title("Modulos listos")
     vtn_modsq.resizable(False, False)
 
+
     ##Widgets
+    rdtbn_mod1=tk.Radiobutton(vtn_modsq, text=mods_listos[0],
+                              variable=quad_mod, value=1,font=("Arial", 20))
+    rdtbn_mod2=tk.Radiobutton(vtn_modsq, text=mods_listos[1],
+                              variable=quad_mod, value=2,font=("Arial", 20))
+    rdtbn_mod3=tk.Radiobutton(vtn_modsq, text=mods_listos[2],
+                              variable=quad_mod, value=3,font=("Arial", 20))
+    rdtbn_mod4=tk.Radiobutton(vtn_modsq, text=mods_listos[3],
+                              variable=quad_mod, value=4, font=("Arial", 20))
+    practicar(0)
+    rdtbn_mod1.place(relx=0.25, rely=0.25, anchor='center')
+    rdtbn_mod2.place(relx=0.75, rely=0.25, anchor='center')
+    rdtbn_mod3.place(relx=0.25, rely=0.75, anchor='center')
+    rdtbn_mod4.place(relx=0.75, rely=0.75, anchor='center')
 
 
 
-
+def practicar(modulo):
+    if modulo==0:
+        print("nada")
+    elif modulo==1:
+        print(mods_listos[0])
+    elif modulo==2:
+        print(mods_listos[1])
+    elif modulo==3:
+        print(mods_listos[2])
+    elif modulo==4:
+        print(mods_listos[3])
+    vtn_modsq.after(300, practicar, quad_mod.get())
 
 def act_mods(mods):
     global mods_listos
@@ -70,6 +102,81 @@ def act_mods(mods):
 
 def tbd2():
     print("calale")
+    ###Para añadir documentacion
+    global f, nombre_entry, lbl_doc_status, mem_nombre_entry, file_entry
+    global doc_var
+    doc_var= IntVar()
+    try:
+        f=open("modulos.txt", "r")
+    except:
+        f=None
+    vtn_docu_crear=tk.Toplevel(vtn_menu)
+    vtn_docu_crear.geometry("480x340")
+    vtn_docu_crear.title("Control de documentacion")
+    ###widgets
+    lbl_bienvenida=tk.Label(vtn_docu_crear, text="Bienvenido")
+    lbl_nombre=tk.Label(vtn_docu_crear, text="Nombre del modulo")
+    lbl_mem_nombre=tk.Label(vtn_docu_crear, text="Identificador en la memoria")
+    lbl_file=tk.Label(vtn_docu_crear, text="Archivo asociado")
+    nombre_entry=tk.Entry(vtn_docu_crear, width=50)
+    mem_nombre_entry=tk.Entry(vtn_docu_crear, width=50)
+    file_entry=tk.Entry(vtn_docu_crear, width=50)
+    btn_buscar=tk.Button(vtn_docu_crear, text="Buscar", command=buscar_ref)
+    btn_crear=tk.Button(vtn_docu_crear, text="Crear..", command=crear_ref)
+    lbl_doc_status = tk.Label(vtn_docu_crear, text="")
+    rdbtn_practica=tk.Radiobutton(vtn_docu_crear, text="Practicas",
+                                  variable=doc_var, value=1)
+    rdbtn_tema=tk.Radiobutton(vtn_docu_crear, text="Temas",
+                              variable=doc_var, value=2)
+    ###poner widgets
+    lbl_bienvenida.grid(column=5, row=0, columnspan=20, rowspan=2, padx=10)
+    lbl_nombre.grid(column=0, row=2,  rowspan=2)
+    nombre_entry.grid(column=0, row=4)
+    lbl_mem_nombre.grid(column=0, row=6, rowspan=2)
+    mem_nombre_entry.grid(column=0, row=8)
+    lbl_file.grid(column=0, row=10, rowspan=2)
+    file_entry.grid(column=0, row=12)
+
+    btn_buscar.place(relx=0.2, rely=0.9, anchor="center")
+    btn_crear.place(relx=0.8, rely=0.9, anchor="center")
+    rdbtn_tema.place(relx=0.5, rely=0.8, anchor="center")
+    rdbtn_practica.place(relx=0.7, rely=0.8, anchor="center")
+    lbl_doc_status.place(relx=0.4, rely=0.9, anchor="center")
+    ##Posible añadir preview
+
+def buscar_ref():
+    print("Ahorita buscamos padre")
+    if f:
+        mod_g=open("modulos.txt", "r")
+        mod_guardados=mod_g.readlines()
+        for mods in mod_guardados:
+            if mods==nombre_entry.get():
+                lbl_doc_status.config(text="Ya existe")
+                break
+    else:
+        lbl_doc_status.config(text="Aun no existe")
+
+def crear_ref():
+    print("gestiono")
+    nombre=nombre_entry.get()
+    memoria=mem_nombre_entry.get()
+    archivo_ref=file_entry.get()
+    if f:
+        indice=open(indice_txt, "a")
+        indice.write(f"\n{nombre}")
+        indice.close()
+    else:
+        if (memoria and nombre and archivo_ref):
+            indice=open(indice_txt, "x")
+            indice.write(nombre)
+            indice.close()
+            archivo=open(f"{nombre}.txt", "x")
+            archivo.writelines(f"{memoria}\n{archivo_ref}")
+            archivo.close()
+            lbl_doc_status.config(text="Datos guardados")
+        else:
+            lbl_doc_status.config(text="Rellena los campos por favor")
+
 
 def instru():
     print("Dr profesor patricio")
@@ -143,6 +250,8 @@ def multimetro():
                                 variable=var, value=2)
     rb_resistencia=tk.Radiobutton(vtn_multi, text="Resistencia",
                                   variable=var, value=3)
+    rb_continuidad=tk.Radiobutton(vtn_multi, text="Continuidad",
+                                  variable=var, value=4)
     lbl_lectura=tk.Label(vtn_multi, text="Lectura", font=("Arial",30))
 
     btn_gen= tk.Button(vtn_multi, text="Generador", command=generador)
@@ -151,9 +260,10 @@ def multimetro():
 
     ###Colocar widgets
     lbl_lectura.place(relx=0.5, rely=0.5, anchor='center')
-    rb_Voltaje.place(relx=0.25, rely=0.8, anchor= 'center')
-    rb_resistencia.place(relx=0.5, rely=0.8, anchor= 'center')
-    rb_Corriente.place(relx=0.75, rely=0.8, anchor= 'center')
+    rb_Voltaje.place(relx=0.2, rely=0.8, anchor= 'center')
+    rb_resistencia.place(relx=0.4, rely=0.8, anchor= 'center')
+    rb_Corriente.place(relx=0.6, rely=0.8, anchor= 'center')
+    rb_continuidad.place(relx=0.8, rely=0.8, anchor="center")
     btn_gen.place(relx=0.95, rely=0.1, anchor='ne')
     btn_osc.place(relx=0.95, rely=0.2, anchor='ne')
     btn_docs.place(relx=0.95, rely=0.3, anchor='ne')
@@ -168,10 +278,12 @@ def multi_lectura(boton):
         lbl_lectura.config(text="Resistencia")
     elif boton==2:
         lbl_lectura.config(text="Corriente")
+    elif boton==4:
+        lbl_lectura.config(text="Continuidad")
     else:
         lbl_lectura.config(text="Elige que medir")
     lbl_lectura.after(500, multi_lectura, var.get())
-    print(var)
+
 
 def osciloscopio():
     print("Hola, soy scoopy")
