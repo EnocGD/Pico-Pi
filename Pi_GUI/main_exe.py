@@ -1,3 +1,4 @@
+import ast
 import tkinter as tk
 import time
 from tkinter import IntVar
@@ -6,17 +7,23 @@ from PIL import Image, ImageTk
 
 
 import pico_funciones as pico
-
+import s_test
+import funciones
 
 ###Variables
 global tema
-
+multimetro_lect=0
 pag_cont=0
 pag_total=0
 tema="TBD"
 indice_txt="Modulos_registrados.txt"
 indice_temas_txt="Temas.txt"
-mods_listos=["Vacio", "Vacio", "Vacio", "Vacio"]
+mods_listos=["Digitale", "Vacio", "Vacio", "Vacio"]
+mem_val={"Tipo":0x0000, "Nombre":0x0040, "Puertos":0x0080}
+p1=80
+p2=88
+p3=96
+p4=104
 ###Funciones
 """
  __       _______   ______ .___________.  ______   .______      
@@ -125,6 +132,7 @@ def aprender_quad():
                               variable=quad_mod, value=3,font=("Arial", 20))
     rdtbn_mod4=tk.Radiobutton(vtn_modsq, text=mods_listos[3],
                               variable=quad_mod, value=4, font=("Arial", 20))
+
     practicar(0)
     ###Posicionamiento de radiobutton
     rdtbn_mod1.place(relx=0.25, rely=0.25, anchor='center')
@@ -134,10 +142,18 @@ def aprender_quad():
 ##############################################################################################################
 ###Seleccion de modulo
 def practicar(modulo):
+    archivo = mods_listos[modulo-1] + ".txt"
+    try:
+        f=open(archivo, "r")
+        print("si")
+        print(modulo)
+    except:
+        print("Modulo no identificado")
     if modulo==0:
         print("nada")
     elif modulo==1:
         print(mods_listos[0])
+
     elif modulo==2:
         print(mods_listos[1])
     elif modulo==3:
@@ -146,6 +162,16 @@ def practicar(modulo):
         print(mods_listos[3])
     vtn_modsq.after(300, practicar, quad_mod.get())
 ##############################################################################################################
+def puertos_i2c():
+    funciones.enviar_comando(b'ms')
+    mods=funciones.recibir_lectura()
+    mods = ast.literal_eval(mods)
+    mods_l=list()
+    for elements in mods:
+        if elements > 70:
+            mods_l.append(elements)
+    mods_l=mods_l[0::2]
+    return mods_l
 ###Actualizar modulos
 def act_mods(mods):
     '''
@@ -154,12 +180,31 @@ def act_mods(mods):
     Notificar si hay un modulo sin informacion
     '''
     global mods_listos
+    mod_temp=list()
     if mods== "Buscando":
         lbl_buscar.config(text="Buscando")
         lbl_buscar.after(5000, act_mods, pico.nop())
+        modulongos=puertos_i2c()
+        time.sleep(1)
+        for elements in modulongos:
+            funciones.enviar_comando(b'fm')
+            time.sleep(1)
+            funciones.enviar_comando(str(elements).encode('utf-8'))
+            if elements==p1:
+                mods_listos[0]=(funciones.recibir_lectura_nb().decode('utf-8', errors='ignore')).split("\xff")[0]
+            elif elements==p2:
+                mods_listos[1] = (funciones.recibir_lectura_nb().decode('utf-8', errors='ignore')).split("\xff")[0]
+            elif elements==p3:
+                mods_listos[2] = (funciones.recibir_lectura_nb().decode('utf-8', errors='ignore')).split("\xff")[0]
+            elif elements==p4:
+                mods_listos[3] = (funciones.recibir_lectura_nb().decode('utf-8', errors='ignore')).split("\xff")[0]
+            else:
+                mods_listos.append((funciones.recibir_lectura_nb()).decode('utf-8', errors='ignore')).split("\xff")[0]
+            time.sleep(1)
     elif mods=="Esperando":
         lbl_buscar.config(text="Conectando...")
-        mods_listos=pico.mods_disponibles()
+
+
         lbl_buscar.after(3000, act_mods, mods_listos[1])
     else:
         lbl_buscar.config(text="Listo")
@@ -169,7 +214,7 @@ def act_mods(mods):
 def tbd2():
     print("calale")
     ###Para añadir documentacion
-    global f, nombre_entry, lbl_doc_status, mem_nombre_entry, file_entry
+    global f, nombre_entry, lbl_doc_status, mem_nombre_entry, file_entry,puerto_entry
     global doc_var
     doc_var= IntVar()
     try:
@@ -183,10 +228,12 @@ def tbd2():
     lbl_bienvenida=tk.Label(vtn_docu_crear, text="Bienvenido")
     lbl_nombre=tk.Label(vtn_docu_crear, text="Nombre del modulo")
     lbl_mem_nombre=tk.Label(vtn_docu_crear, text="Identificador en la memoria")
+    lbl_puertos=tk.Label(vtn_docu_crear, text="Puertos: ")
     lbl_file=tk.Label(vtn_docu_crear, text="Archivo asociado")
     nombre_entry=tk.Entry(vtn_docu_crear, width=50)
     mem_nombre_entry=tk.Entry(vtn_docu_crear, width=50)
     file_entry=tk.Entry(vtn_docu_crear, width=50)
+    puerto_entry=tk.Entry(vtn_docu_crear,width=50)
     btn_buscar=tk.Button(vtn_docu_crear, text="Buscar", command=buscar_ref)
     btn_crear=tk.Button(vtn_docu_crear, text="Crear..", command=crear_ref)
     lbl_doc_status = tk.Label(vtn_docu_crear, text="")
@@ -202,6 +249,8 @@ def tbd2():
     mem_nombre_entry.grid(column=0, row=8)
     lbl_file.grid(column=0, row=10, rowspan=2)
     file_entry.grid(column=0, row=12)
+    lbl_puertos.grid(column=0, row=14)
+    puerto_entry.grid(column=0, row=16)
 
     btn_buscar.place(relx=0.2, rely=0.9, anchor="center")
     btn_crear.place(relx=0.8, rely=0.9, anchor="center")
@@ -229,17 +278,30 @@ def crear_ref():
     nombre=nombre_entry.get()
     memoria=mem_nombre_entry.get()
     archivo_ref=file_entry.get()
+    puerto=puerto_entry.get()
+    try:
+        f=open("Modulos_registrados.txt", "r")
+    except:
+        f=None
+        print("Aun no esta listo")
     if f:
+        f.close()
         indice=open(indice_txt, "a")
         indice.write(f"\n{nombre}")
         indice.close()
+        try:
+            f=open(f"{nombre}.txt", "w")
+        except:
+            f=open(f"{nombre}", "x")
+        f.writelines(f"{memoria}\n{archivo_ref}\n{puerto}")
+        f.close()
     else:
         if (memoria and nombre and archivo_ref):
             indice=open(indice_txt, "x")
             indice.write(nombre)
             indice.close()
             archivo=open(f"{nombre}.txt", "x")
-            archivo.writelines(f"{memoria}\n{archivo_ref}")
+            archivo.writelines(f"{memoria}\n{archivo_ref}\n{puerto}")
             archivo.close()
             lbl_doc_status.config(text="Datos guardados")
         else:
@@ -348,15 +410,35 @@ def multimetro():
 ##############################################################################################################
 ###Selector de opciones del multimetro
 def multi_lectura(boton):
+    global multimetro_lect
+    funciones.enviar_comando(b'metter')
+    time.sleep(1)
+    if multimetro_lect==0:
+        funciones.enviar_comando(b's')
+        time.sleep(0.5)
+        funciones.enviar_comando(b'r')
+        time.sleep(0.5)
+        multimetro_lect=1
     if boton==1:
-        lbl_lectura.config(text="Voltaje")
+        funciones.enviar_comando(b'v')
+        time.sleep(0.1)
+        lectura=funciones.recibir_lectura()
+        lbl_lectura.config(text=lectura)
 
     elif boton == 3:
-        lbl_lectura.config(text="Resistencia")
+        funciones.enviar_comando(b'o')
+        time.sleep(0.1)
+        lectura=funciones.recibir_lectura()
+        lbl_lectura.config(text=lectura)
     elif boton==2:
-        lbl_lectura.config(text="Corriente")
+
+        funciones.enviar_comando(b'i')
+        time.sleep(0.1)
+        lectura=funciones.recibir_lectura()
+        lbl_lectura.config(text=lectura)
     elif boton==4:
         lbl_lectura.config(text="Continuidad")
+        funciones.enviar_comando(b'c')
     else:
         lbl_lectura.config(text="Elige que medir")
     lbl_lectura.after(500, multi_lectura, var.get())
@@ -391,7 +473,7 @@ def generador():
     print("Hola soy un generador")
     gen_vtn=tk.Toplevel(vtn_instru_menu)
     gen_vtn.geometry("480x340")
-    gen_vtn.title("Generador de funciones")
+    gen_vtn.title("Calibre 50")
     gen_vtn.resizable(False, False)
     ###Iconos
     flecha_arriba=tk.PhotoImage(file="angulo-pequeno-hacia-arriba.png")
@@ -432,9 +514,20 @@ def generador():
 def seno():
     print("Saca un seno")
     global  signal
+    frec=str(frec_gen)
+    frec=frec.encode('utf-8')
     signal="Senoidal"
     texto=f"Senoidal {frec_gen}Hz"
     lbl_generador.config(text=texto)
+    funciones.enviar_comando(b'awg')
+    time.sleep(1)
+    funciones.enviar_comando(b'w')
+    time.sleep(1)
+    funciones.enviar_comando(b'0')
+    time.sleep(1)
+    funciones.enviar_comando(b'f')
+    time.sleep(1)
+    funciones.enviar_comando(frec)
 
 def triangular():
     global signal
@@ -442,25 +535,57 @@ def triangular():
     texto=f"Triangular {frec_gen}Hz"
     print("Soy un triangulo :)")
     lbl_generador.config(text=texto)
+    frec=str(frec_gen)
+    frec=frec.encode('utf-8')
+    funciones.enviar_comando(b'awg')
+    time.sleep(1)
+    funciones.enviar_comando(b'w')
+    time.sleep(1)
+    funciones.enviar_comando(b'1')
+    time.sleep(1)
+    funciones.enviar_comando(b'f')
+    time.sleep(1)
+    funciones.enviar_comando(frec)
 
 def sqr_w():
+    frec=str(frec_gen)
+    frec=frec.encode('utf-8')
     global signal
     signal="Cuadrada"
     print("Cuadrado")
     texto=f"Cuadrada {frec_gen}Hz"
     lbl_generador.config(text=texto)
+    funciones.enviar_comando(b'awg')
+    time.sleep(1)
+    funciones.enviar_comando(b'w')
+    time.sleep(1)
+    funciones.enviar_comando(b'2')
+    time.sleep(1)
+    funciones.enviar_comando(b'f')
+    time.sleep(1)
+    funciones.enviar_comando(frec)
 
 def frec_aumentar():
     global frec_gen
     frec_gen+= 10
+    frec=str(frec_gen)
+    frec=frec.encode('utf-8')
     texto=f"{signal} {frec_gen}Hz"
     lbl_generador.config(text=texto)
+    funciones.enviar_comando(b'f')
+    time.sleep(1)
+    funciones.enviar_comando(frec)
 
 def frec_bajar():
     global frec_gen
     frec_gen-=10
+    frec=str(frec_gen)
+    frec=frec.encode('utf-8')
     texto=f"{signal} {frec_gen}Hz"
     lbl_generador.config(text=texto)
+    funciones.enviar_comando(b'f')
+    time.sleep(1)
+    funciones.enviar_comando(frec)
 ##############################################################################################################
 ###Menu de documentacion
 def docs():
@@ -520,10 +645,15 @@ def doc_adelante():
 def doc_atras():
     print("Atras")
 
+######################################################################################################3
+def serial_terminal():
+    vtn_serial=tk.Toplevel(vtn_menu)
+    vtn_serial.geometry("480x340")
+    vtn_serial.title("Monitor serial")
+    vtn_serial.resizable(False, False)
+    vtn_serial.config(bg='black')
 
-
-
-
+    serial_caja = tk.Text(vtn_ser, width=56, height=20)
 
 """
  __  .__   __.  __    ______  __    ______  
