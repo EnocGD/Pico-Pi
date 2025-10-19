@@ -1,3 +1,4 @@
+import tkinter as tk
 import serial
 import serial.tools.list_ports
 import time
@@ -31,10 +32,20 @@ def arduino_play():
         print(f"Arduino dice {respuesta}")
         yo=input("Di algo")
         arduino.write(yo)
+        arduino.close()
 
+def serial_vtn():
+    vtn_ser=tk.Tk()
+    vtn_ser.geometry("480x340")
+    vtn_ser.title("Serial")
+    vtn_ser.resizable(False, False)
+    vtn_ser.config(bg="black")
 
-'''arduino.write(b"Bolas")
+    ###Cuadro de serial
+    serial_caja=tk.Text(vtn_ser, width=56, height=20)
+    
+    serial_caja.place(relx=0.5, rely=0.45, anchor="center")
 
-respuesta = arduino.readline().decode().strip()
-arduino.close()'''
-arduino_play()
+    vtn_ser.mainloop()
+
+serial_vtn()

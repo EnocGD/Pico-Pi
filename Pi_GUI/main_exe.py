@@ -7,6 +7,7 @@ from PIL import Image, ImageTk
 
 import pico_funciones as pico
 
+import funciones
 
 ###Variables
 global tema
@@ -432,9 +433,20 @@ def generador():
 def seno():
     print("Saca un seno")
     global  signal
+    frec=str(frec_gen)
+    frec=frec.encode('utf-8')
     signal="Senoidal"
     texto=f"Senoidal {frec_gen}Hz"
     lbl_generador.config(text=texto)
+    funciones.enviar_comando(b'awg')
+    time.sleep(1)
+    funciones.enviar_comando(b'w')
+    time.sleep(1)
+    funciones.enviar_comando(b'0')
+    time.sleep(1)
+    funciones.enviar_comando(b'f')
+    time.sleep(1)
+    funciones.enviar_comando(frec)
 
 def triangular():
     global signal
@@ -442,25 +454,57 @@ def triangular():
     texto=f"Triangular {frec_gen}Hz"
     print("Soy un triangulo :)")
     lbl_generador.config(text=texto)
+    frec=str(frec_gen)
+    frec=frec.encode('utf-8')
+    funciones.enviar_comando(b'awg')
+    time.sleep(1)
+    funciones.enviar_comando(b'w')
+    time.sleep(1)
+    funciones.enviar_comando(b'1')
+    time.sleep(1)
+    funciones.enviar_comando(b'f')
+    time.sleep(1)
+    funciones.enviar_comando(frec)
 
 def sqr_w():
+    frec=str(frec_gen)
+    frec=frec.encode('utf-8')
     global signal
     signal="Cuadrada"
     print("Cuadrado")
     texto=f"Cuadrada {frec_gen}Hz"
     lbl_generador.config(text=texto)
+    funciones.enviar_comando(b'awg')
+    time.sleep(1)
+    funciones.enviar_comando(b'w')
+    time.sleep(1)
+    funciones.enviar_comando(b'2')
+    time.sleep(1)
+    funciones.enviar_comando(b'f')
+    time.sleep(1)
+    funciones.enviar_comando(frec)
 
 def frec_aumentar():
     global frec_gen
     frec_gen+= 10
+    frec=str(frec_gen)
+    frec=frec.encode('utf-8')
     texto=f"{signal} {frec_gen}Hz"
     lbl_generador.config(text=texto)
+    funciones.enviar_comando(b'f')
+    time.sleep(1)
+    funciones.enviar_comando(frec)
 
 def frec_bajar():
     global frec_gen
     frec_gen-=10
+    frec=str(frec_gen)
+    frec=frec.encode('utf-8')
     texto=f"{signal} {frec_gen}Hz"
     lbl_generador.config(text=texto)
+    funciones.enviar_comando(b'f')
+    time.sleep(1)
+    funciones.enviar_comando(frec)
 ##############################################################################################################
 ###Menu de documentacion
 def docs():
