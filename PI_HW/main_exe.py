@@ -147,12 +147,6 @@ def practicar(modulo):
         f=open(archivo, "r")
         print("si")
         print(modulo)
-        info=f.readlines()
-        ptos=info[2]
-        if ptos=="serial":
-            serial_terminal()
-        else:
-            leer_pdf(modulo, 0)
     except:
         print("Modulo no identificado")
     if modulo==0:
@@ -659,7 +653,7 @@ def serial_terminal():
     vtn_serial.resizable(False, False)
     vtn_serial.config(bg='black')
 
-    serial_caja = tk.Text(vtn_serial, width=56, height=20)
+    serial_caja = tk.Text(vtn_ser, width=56, height=20)
 
 """
  __  .__   __.  __    ______  __    ______  
