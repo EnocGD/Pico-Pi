@@ -2,14 +2,17 @@ import ast
 import tkinter as tk
 import time
 from tkinter import IntVar
+from tkinter import ttk
 import fitz
 from PIL import Image, ImageTk
-
+import pandas as pd
+import openpyxl
 
 import pico_funciones as pico
-import s_test
-import funciones
 
+import funciones
+vtn_pdf=None
+vtn_tabla_mod=None
 ###Variables
 global tema
 multimetro_lect=0
@@ -18,12 +21,15 @@ pag_total=0
 tema="TBD"
 indice_txt="Modulos_registrados.txt"
 indice_temas_txt="Temas.txt"
-mods_listos=["Digitale", "Vacio", "Vacio", "Vacio"]
+mods_listos=["Vacio", "Vacio", "Vacio", "Vacio"]
 mem_val={"Tipo":0x0000, "Nombre":0x0040, "Puertos":0x0080}
 p1=80
 p2=88
 p3=96
 p4=104
+mod_info={}
+tabla_ref={}
+pi_window_size="480x320+0+0"
 ###Funciones
 """
  __       _______   ______ .___________.  ______   .______      
@@ -42,10 +48,13 @@ p4=104
 """
 def leer_pdf(ruta,pagina):
     ###Vtn de lector
+    global vtn_pdf
     global lbl_pdf
     vtn_pdf=tk.Toplevel(vtn_menu)
-    vtn_pdf.geometry("480x340")
+    vtn_pdf.geometry(pi_window_size)
     vtn_pdf.title("Lector PDF by CTM")
+    vtn_pdf.attributes('-fullscreen', True)
+    vtn_pdf.focus_set()
     vtn_pdf.resizable(False, False)
     vtn_pdf.config(bg="black")
     ###Primera hoja
@@ -103,9 +112,11 @@ def menu_aprender():
     global vtn_lect_mods
 
     vtn_lect_mods=tk.Toplevel(vtn_menu)
-    vtn_lect_mods.geometry("480x340")
+    vtn_lect_mods.geometry(pi_window_size)
     vtn_lect_mods.title("Leyendo modulongos")
     vtn_lect_mods.resizable(False, False)
+    vtn_lect_mods.attributes('-fullscreen', True)
+    vtn_lect_mods.focus_set()
     ###vtn_menu.withdraw()
     lbl_buscar=tk.Label(vtn_lect_mods,
                         text="Buscando...",
@@ -119,10 +130,12 @@ def aprender_quad():
     global quad_mod
     quad_mod=IntVar()
     vtn_modsq=tk.Toplevel(vtn_menu)
-    vtn_lect_mods.destroy()
-    vtn_modsq.geometry("480x340")
+    #vtn_lect_mods.destroy()
+    vtn_modsq.geometry(pi_window_size)
     vtn_modsq.title("Modulos listos")
     vtn_modsq.resizable(False, False)
+    vtn_modsq.attributes('-fullscreen', True)
+    vtn_modsq.focus_set()
     ##Widgets
     rdtbn_mod1=tk.Radiobutton(vtn_modsq, text=mods_listos[0],
                               variable=quad_mod, value=1,font=("Arial", 20))
@@ -142,19 +155,34 @@ def aprender_quad():
 ##############################################################################################################
 ###Seleccion de modulo
 def practicar(modulo):
-    archivo = mods_listos[modulo-1] + ".txt"
-    try:
-        f=open(archivo, "r")
-        print("si")
-        print(modulo)
-        info=f.readlines()
-        ptos=info[2]
-        if ptos=="serial":
-            serial_terminal()
-        else:
-            leer_pdf(modulo, 0)
-    except:
-        print("Modulo no identificado")
+    global mod_info
+    mod_info={}
+    serial_t=None
+    print("avel")
+    print(modulo)
+    if modulo!=0:
+        try:
+            xl_file=pd.ExcelFile('directorio.xlsx')
+            tipos=pd.read_excel(xl_file, sheet_name=modulo).iloc[0]["Tipo de puertos"]
+            nombre_ptos=pd.read_excel(xl_file,sheet_name=modulo).iloc[0]["Nombre de puertos"]
+            numero_ptos=pd.read_excel(xl_file, sheet_name=modulo).iloc[0]["Numero de puertos"]
+            ref_doc=pd.read_excel(xl_file, sheet_name=modulo).iloc[0]["Documento de referencia"]
+            mod_info['nombre']=nombre_ptos.split('\n')
+            mod_info['tipos']=tipos.split('\n')
+            mod_info['numero']=int(numero_ptos)
+            mod_info['doc']=ref_doc
+            '''for puerto in mod_info['tipos']:
+                if puerto=='Serie':
+                    serial_t=1
+            if serial_t==1:
+                serial_terminal()
+            else:'''
+            if vtn_tabla_mod==None:
+                leer_mod(mod_info)
+            '''if vtn_pdf==None:
+                leer_pdf(modulo, 0)'''
+        except:
+            print("Modulo no identificado")
     if modulo==0:
         print("nada")
     elif modulo==1:
@@ -178,6 +206,63 @@ def puertos_i2c():
             mods_l.append(elements)
     mods_l=mods_l[0::2]
     return mods_l
+
+def leer_mod(mod_info):
+    global index_item
+    global tabla
+    global vtn_tabla_mod
+    vtn_tabla_mod=tk.Toplevel(vtn_modsq)
+    vtn_tabla_mod.geometry(pi_window_size)
+    vtn_tabla_mod.resizable(False,False)
+    vtn_tabla_mod.title("Tabla")
+    lista=list()
+    for i in range(0,mod_info['numero']):
+        lista.append('na')
+    columnas=('Puerto', 'Valor')
+    nuevo_indice={}
+    tabla=ttk.Treeview(vtn_tabla_mod, columns=columnas, show='headings')
+    tabla.heading('Puerto', text="Nombre de puerto")
+    tabla.heading('Valor', text='Valor')
+    for Puerto, Valor in zip(mod_info['nombre'], lista):
+        valores_tabla= (Puerto, Valor)
+        item_id=tabla.insert(parent='', index='end', values=valores_tabla)
+        nuevo_indice[Puerto]=item_id
+    index_item=nuevo_indice
+    btn_pdf=tk.Button(vtn_tabla_mod, text="Abrir documentacion", command=lambda :leer_pdf(mod_info['doc'],0))
+    btn_instru=tk.Button(vtn_tabla_mod, text="Instrumentacion", command=instru)
+    actualizar_tabla()
+    btn_pdf.place(relx=0.2, rely=0.8, anchor='center')
+    btn_instru.place(relx=0.5, rely=0.8, anchor='center')
+    if mod_info['tipos'][0]=='Serie':
+        btn_serial=tk.Button(vtn_tabla_mod, text="Monitor", command=serial_terminal)
+        btn_serial.place(relx=0.8, rely=0.8, anchor='center')
+    tabla.pack()
+    print(index_item)
+
+def actualizar_tabla():
+    numero = str(mod_info['numero'])
+    funciones.enviar_comando(b'mux')
+    time.sleep(0.1)
+    tipo=mod_info['tipos'][0]
+    nmodulo=str(quad_mod.get()-1)
+    funciones.enviar_comando(numero.encode('utf-8'))
+    time.sleep(0.05)
+    funciones.enviar_comando(tipo.encode('utf-8'))
+    time.sleep(0.05)
+    funciones.enviar_comando(nmodulo.encode('utf-8'))
+    lista=funciones.recibir_lectura().split(' ')
+    if len(lista)> len(mod_info['nombre']):
+        lista.pop()
+    #lista=[1,0,1,0,1,0,1]
+    print(type(lista))
+    for nombre_puerto, nuevo_valor in zip(mod_info['nombre'], lista):
+        try:
+            item_id=index_item[nombre_puerto]
+            actualizacion=(nombre_puerto, nuevo_valor)
+            tabla.item(item_id,values=actualizacion)
+        except KeyError:
+           print("Algo fallo")
+    vtn_tabla_mod.after(500, actualizar_tabla)
 ###Actualizar modulos
 def act_mods(mods):
     '''
@@ -186,7 +271,7 @@ def act_mods(mods):
     Notificar si hay un modulo sin informacion
     '''
     global mods_listos
-    mod_temp=list()
+    #mods_listos=["Vacio", "Vacio", "Vacio", "Vacio"]
     if mods== "Buscando":
         lbl_buscar.config(text="Buscando")
         lbl_buscar.after(5000, act_mods, pico.nop())
@@ -228,7 +313,7 @@ def tbd2():
     except:
         f=None
     vtn_docu_crear=tk.Toplevel(vtn_menu)
-    vtn_docu_crear.geometry("480x340")
+    vtn_docu_crear.geometry(pi_window_size)
     vtn_docu_crear.title("Control de documentacion")
     ###widgets
     lbl_bienvenida=tk.Label(vtn_docu_crear, text="Bienvenido")
@@ -334,9 +419,11 @@ def instru():
     global vtn_instru_menu
     ###Creacion de ventana de menu instru
     vtn_instru_menu= tk.Toplevel(vtn_menu)
-    vtn_instru_menu.geometry("480x340")
+    vtn_instru_menu.geometry(pi_window_size)
     vtn_instru_menu.title("Menu de instrumentacion")
     vtn_instru_menu.resizable(False, False)
+    vtn_instru_menu.attributes('-fullscreen', True)
+    vtn_instru_menu.focus_set()
     ###Imagenes
     global multi_icon
     global osc_icon
@@ -385,9 +472,11 @@ def multimetro():
     global lbl_lectura
     global var
     vtn_multi=tk.Toplevel(vtn_instru_menu)
-    vtn_multi.geometry("480x340")
+    vtn_multi.geometry(pi_window_size)
     vtn_multi.title("Multimetro")
     vtn_multi.resizable(False, False)
+    vtn_multi.attributes('-fullscreen', True)
+    vtn_multi.focus_set()
     var=IntVar()
     ###Widgets
     rb_Voltaje=tk.Radiobutton(vtn_multi, text="Voltaje",
@@ -453,9 +542,11 @@ def multi_lectura(boton):
 def osciloscopio():
     print("Hola, soy scoopy")
     vtn_osc=tk.Toplevel(vtn_instru_menu)
-    vtn_osc.geometry("480x340")
+    vtn_osc.geometry(pi_window_size)
     vtn_osc.title("Como usar scoopy")
     vtn_osc.resizable(False, False)
+    vtn_osc.attributes('-fullscreen', True)
+    vtn_osc.focus_set()
     txt_usame=tk.Text(vtn_osc, width=45, height=15)
 
     btn_multi=tk.Button(vtn_osc, text="Multimetro", command=multimetro)
@@ -478,9 +569,11 @@ def generador():
     global flecha_abajo
     print("Hola soy un generador")
     gen_vtn=tk.Toplevel(vtn_instru_menu)
-    gen_vtn.geometry("480x340")
+    gen_vtn.geometry(pi_window_size)
     gen_vtn.title("Calibre 50")
     gen_vtn.resizable(False, False)
+    gen_vtn.attributes('-fullscreen', True)
+    gen_vtn.focus_set()
     ###Iconos
     flecha_arriba=tk.PhotoImage(file="angulo-pequeno-hacia-arriba.png")
     flecha_abajo=tk.PhotoImage(file="angulo-hacia-abajo.png")
@@ -606,7 +699,7 @@ def docs():
         global docs_var
         docs_var=IntVar()
         vtn_docs_menu=tk.Toplevel(vtn_menu)
-        vtn_docs_menu.geometry("480x340")
+        vtn_docs_menu.geometry(pi_window_size)
         vtn_docs_menu.title("Documentacion")
         vtn_docs_menu.resizable(False, False)
         ###Menu de eleccion de tema
@@ -623,7 +716,7 @@ def docs():
     else:
         opcion=0
         vtn_apunte=tk.Toplevel(vtn_menu)
-        vtn_apunte.geometry("480x340")
+        vtn_apunte.geometry(pi_window_size)
         vtn_apunte.title(tema)
         ###Widgets
         txt_apunte=tk.Text(vtn_apunte,width=40, height=20)
@@ -653,14 +746,39 @@ def doc_atras():
 
 ######################################################################################################3
 def serial_terminal():
+    def enviar():
+        mensaje=cb_practicas.get()
+        mensaje=mensaje+'\n'
+        serial_caja.insert(tk.END, mensaje)
+        match mensaje:
+            case 'P1':
+                comandos=["Cambiar practica"]
+            case 'P2':
+                #Imprimir mensaje de terminal
+                comandos=['c', 's', 'r', "Cambiar practica"]
+            case 'P3':
+                #Imprimir desde terminal
+                comandos=['d', 's', 'c', 't', "Cambiar practica"]
+            case 'P4':
+                #Imprimir desde terminal
+                comandos=['s', '+', '-']
+            case _:
+                print("Nada")
+
+    practicas=['P1', 'P2', 'P3', 'P4', 'P5']
     vtn_serial=tk.Toplevel(vtn_menu)
-    vtn_serial.geometry("480x340")
+    vtn_serial.geometry(pi_window_size)
     vtn_serial.title("Monitor serial")
     vtn_serial.resizable(False, False)
     vtn_serial.config(bg='black')
 
-    serial_caja = tk.Text(vtn_serial, width=56, height=20)
-
+    serial_caja = tk.Text(vtn_serial, width=55, height=15)
+    cb_practicas=ttk.Combobox(vtn_serial, values=practicas)
+    cb_practicas.set("Elige una practica...")
+    btn_enviar=tk.Button(vtn_serial,text="->", command=enviar)
+    serial_caja.pack()
+    cb_practicas.pack()
+    btn_enviar.pack(after=cb_practicas)
 """
  __  .__   __.  __    ______  __    ______  
 |  | |  \ |  | |  |  /      ||  |  /  __  \ 
@@ -677,9 +795,11 @@ def bienvenida():
     ##Imagenes
     logo = tk.PhotoImage(file="logo.png")
 
-    main_vtn.geometry("480x340")
+    main_vtn.geometry(pi_window_size)
     main_vtn.title("Bienvenida")
     main_vtn.resizable(False, False)
+    main_vtn.attributes('-fullscreen', True)
+    main_vtn.focus_set()
     ###Etiquetas
     lbl_bienvenido = tk.Label(main_vtn,
                               text="BIENVENIDO",
@@ -736,12 +856,16 @@ def inicio():
 | _|      | _| `._____||__| |__| \__|  \______||__| | _|    /__/     \__\
 """
 def crear_main_vtn():
-    main_vtn.destroy()
+    main_vtn.withdraw()
+    #main_vtn.destroy()
     global vtn_menu
-    vtn_menu=tk.Tk()
+    vtn_menu=tk.Toplevel(main_vtn)
     vtn_menu.title("Menu principal")
-    vtn_menu.geometry("480x340")
+    vtn_menu.attributes('-fullscreen', True)
+    vtn_menu.geometry(pi_window_size)
     vtn_menu.resizable(False, False)
+
+    vtn_menu.focus_set()
     ##Imagenes
     ajalas_icon = tk.PhotoImage(file="ajalas.png")
     docs_icon= tk.PhotoImage(file="docs.png")

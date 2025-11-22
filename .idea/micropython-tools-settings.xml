@@ -3,8 +3,7 @@
   <component name="MicroPythonTools">
     <option name="areStubsEnabled" value="false" />
     <option name="enableManualEditing" value="true" />
-    <option name="increaseBaudrateForFileTransfers" value="false" />
-    <option name="increasedFileTransferBaudrate" value="115200" />
+    <option name="lastShownVersion" value="2025.3.1" />
     <option name="pluginEnabled" value="true" />
     <option name="portName" value="COM13" />
   </component>
