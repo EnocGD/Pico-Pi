@@ -1,995 +1,818 @@
 // ============================================
-// ARDUINO NANO LEARNING SYSTEM - COMPLETE & SECURE
+// SISTEMA DE APRENDIZAJE ARDUINO NANO - ESTRUCTURA MODULAR
+// Sistema Educativo con 5 Prácticas Independientes
 // ============================================
 
 #include <Servo.h>
 
 // ============================================
-// SAFETY CONSTANTS
-// ============================================
-#define MAX_INPUT_LENGTH 32
-#define SERVO_MIN_ANGLE 0
-#define SERVO_MAX_ANGLE 180
-#define MAX_DISPLAY_NUMBER 9999
-
-// ============================================
-// PIN DEFINITIONS
+// DEFINICIONES DE PINES
 // ============================================
 const int SHARED_D3 = 3, SHARED_D4 = 4, SHARED_D5 = 5, SHARED_D6 = 6;
 const int SHARED_D7 = 7, SHARED_D8 = 8, SHARED_D9 = 9, SHARED_D10 = 10;
 const int SHARED_D11 = 11, SHARED_D12 = 12, SHARED_A0 = A0, SHARED_A1 = A1;
-const int MODE_BUTTON = 2, POTENTIOMETER = A2, STATUS_LED = 13;
+const int POTENCIOMETRO = A2, LED_ESTADO = 13;
 
 // ============================================
-// CONSTANTS IN FLASH MEMORY
+// CONSTANTES
 // ============================================
-const PROGMEM byte digitPatterns[] = {
+const PROGMEM byte patronesDigitos[] = {
   0b11111100, 0b01100000, 0b11011010, 0b11110010, 0b01100110,
   0b10110110, 0b10111110, 0b11100000, 0b11111110, 0b11110110
 };
 
-// Sine lookup table for breathing effect (saves float operations)
-const PROGMEM byte sineTable[] = {
-  128, 131, 134, 137, 140, 143, 146, 149, 152, 155, 158, 162, 165, 167, 170, 173,
-  176, 179, 182, 185, 188, 190, 193, 196, 198, 201, 203, 206, 208, 211, 213, 215,
-  218, 220, 222, 224, 226, 228, 230, 232, 234, 235, 237, 238, 240, 241, 243, 244,
-  245, 246, 248, 249, 250, 250, 251, 252, 253, 253, 254, 254, 254, 255, 255, 255,
-  255, 255, 255, 255, 254, 254, 254, 253, 253, 252, 251, 250, 250, 249, 248, 246,
-  245, 244, 243, 241, 240, 238, 237, 235, 234, 232, 230, 228, 226, 224, 222, 220,
-  218, 215, 213, 211, 208, 206, 203, 201, 198, 196, 193, 190, 188, 185, 182, 179,
-  176, 173, 170, 167, 165, 162, 158, 155, 152, 149, 146, 143, 140, 137, 134, 131,
-  128, 124, 121, 118, 115, 112, 109, 106, 103, 100, 97, 93, 90, 88, 85, 82,
-  79, 76, 73, 70, 67, 65, 62, 59, 57, 54, 52, 49, 47, 44, 42, 40,
-  37, 35, 33, 31, 29, 27, 25, 23, 21, 20, 18, 17, 15, 14, 12, 11,
-  10, 9, 7, 6, 5, 5, 4, 3, 2, 2, 1, 1, 1, 0, 0, 0,
-  0, 0, 0, 0, 1, 1, 1, 2, 2, 3, 4, 5, 5, 6, 7, 9,
-  10, 11, 12, 14, 15, 17, 18, 20, 21, 23, 25, 27, 29, 31, 33, 35,
-  37, 40, 42, 44, 47, 49, 52, 54, 57, 59, 62, 65, 67, 70, 73, 76,
-  79, 82, 85, 88, 90, 93, 97, 100, 103, 106, 109, 112, 115, 118, 121, 124
+// ============================================
+// VARIABLES DE ESTADO DEL SISTEMA
+// ============================================
+enum EstadoSistema {
+  MENU_PRINCIPAL,
+  PRACTICA_1,
+  PRACTICA_2,
+  PRACTICA_3,
+  PRACTICA_4,
+  PRACTICA_5
 };
 
-// ============================================
-// SYSTEM STATE VARIABLES
-// ============================================
-int currentPractice = -1;
-bool practiceRunning = false;
-bool practiceActive = false;
-bool showMenu = true;
-bool waitingForConfirmation = false;
-bool systemShutdown = false;
-unsigned long lastButtonPress = 0;
-bool lastButtonState = false;
+EstadoSistema estadoActual = MENU_PRINCIPAL;
+bool practicaActiva = false;
+String bufferEntrada = "";
 
-Servo myServo;
-
-struct PracticeState {
-  // Practice 1 - Digital GPIO
-  bool redLedState = false;
-  bool greenLedState = false;
-  bool lastInputButtonState = false;
-  unsigned long lastBlinkTime = 0;
-  int blinkInterval = 500;
-  
-  // Practice 2 - Analog Input
-  int brightness = 0;
-  int lastPotValue = -1;
-  
-  // Practice 3 - PWM & Servo
-  int servoPosition = 90;
-  int targetServoPosition = 90;
-  unsigned long lastServoUpdate = 0;
-  
-  // Practice 4 - RGB LED
-  int redValue = 0, greenValue = 0, blueValue = 0;
-  int colorStep = 0;
-  int colorMode = 0;
-  unsigned long lastColorUpdate = 0;
-  
-  // Practice 5 - 7-Segment Display
-  int displayNumber = 1234;
-  int currentDigit = 0;
-  unsigned long lastDisplayUpdate = 0;
-  bool showLeadingZeros = false;
-} state;
-
-// SECURE: Fixed-size input buffer
-char inputBuffer[MAX_INPUT_LENGTH + 1];
-int inputIndex = 0;
+Servo miServo;
 
 // ============================================
-// SETUP FUNCTION
+// ESTRUCTURAS DE ESTADO DE PRÁCTICAS
+// ============================================
+struct EstadoPractica1 {
+  bool estadoLedRojo = false;
+  bool estadoLedVerde = false;
+  bool ultimoEstadoBoton = false;
+  unsigned long ultimoTiempoParpadeo = 0;
+  int intervaloParpadeo = 500;
+} estadoP1;
+
+struct EstadoPractica2 {
+  int brillo = 0;
+  int ultimoValorPot = -1;
+} estadoP2;
+
+struct EstadoPractica3 {
+  int posicionServo = 90;
+  int posicionObjetivoServo = 90;
+  unsigned long ultimaActualizacionServo = 0;
+  int brillo = 0;
+} estadoP3;
+
+struct EstadoPractica4 {
+  int valorRojo = 0;
+  int valorVerde = 0;
+  int valorAzul = 0;
+  int pasoColor = 0;
+  int modoColor = 0;
+  unsigned long ultimaActualizacionColor = 0;
+} estadoP4;
+
+struct EstadoPractica5 {
+  int numeroDisplay = 1234;
+  int digitoActual = 0;
+  unsigned long ultimaActualizacionDisplay = 0;
+  bool mostrarCerosIzquierda = false;
+} estadoP5;
+
+// ============================================
+// FUNCIÓN SETUP
 // ============================================
 void setup() {
   Serial.begin(9600);
-  
-  // Initialize input buffer
-  memset(inputBuffer, 0, sizeof(inputBuffer));
-  
-  pinMode(MODE_BUTTON, INPUT);
-  pinMode(STATUS_LED, OUTPUT);
-  digitalWrite(STATUS_LED, HIGH);
+  pinMode(LED_ESTADO, OUTPUT);
+  digitalWrite(LED_ESTADO, HIGH);
   
   delay(2000);
-  showWelcomeMessage();
-  waitForUserReady();
-  showMainMenu();
+  mostrarMensajeBienvenida();
+  mostrarMenuPrincipal();
 }
 
 // ============================================
-// MAIN LOOP
+// BUCLE PRINCIPAL
 // ============================================
 void loop() {
-  // SECURE: Check for shutdown flag
-  if (systemShutdown) {
-    performSafeShutdown();
-    return; // Exit loop safely
+  manejarEntradaSerial();
+  
+  switch (estadoActual) {
+    case MENU_PRINCIPAL:
+      manejarMenuPrincipal();
+      break;
+    case PRACTICA_1:
+      ejecutarPractica1();
+      break;
+    case PRACTICA_2:
+      ejecutarPractica2();
+      break;
+    case PRACTICA_3:
+      ejecutarPractica3();
+      break;
+    case PRACTICA_4:
+      ejecutarPractica4();
+      break;
+    case PRACTICA_5:
+      ejecutarPractica5();
+      break;
   }
   
-  handleModeButton();
-  handleSerialInput();
-  
-  if (practiceRunning && practiceActive && currentPractice >= 0) {
-    runCurrentPractice();
-  } else if (showMenu) {
-    digitalWrite(STATUS_LED, (millis() / 1000) % 2);
-  }
+  actualizarLedEstado();
 }
 
 // ============================================
-// SECURE SHUTDOWN SYSTEM
+// MANEJO DE ENTRADA
 // ============================================
-void performSafeShutdown() {
-  Serial.println(F("🔴 PERFORMING SAFE SHUTDOWN..."));
-  
-  // Clean up all resources
-  turnOffAllOutputs();
-  
-  if (myServo.attached()) {
-    myServo.detach();
-    Serial.println(F("✓ Servo detached"));
-  }
-  
-  // Reset all states
-  practiceRunning = false;
-  practiceActive = false;
-  currentPractice = -1;
-  waitingForConfirmation = false;
-  
-  Serial.println(F("✓ All resources cleaned up"));
-  Serial.println(F("✓ System shutdown complete"));
-  Serial.println(F("🔴 GOODBYE! Please reset Arduino to restart."));
-  
-  // Safe infinite loop with status indication
-  while (true) {
-    digitalWrite(STATUS_LED, (millis() / 2000) % 2); // Slow blink = shutdown
-    delay(100);
-  }
-}
-
-// ============================================
-// WELCOME AND MENU SYSTEM
-// ============================================
-void showWelcomeMessage() {
-  Serial.println(F(""));
-  Serial.println(F("╔══════════════════════════════════════════════════════════╗"));
-  Serial.println(F("║          ARDUINO NANO LEARNING SYSTEM v3.1              ║"));
-  Serial.println(F("║         Step-by-Step Educational Experience             ║"));
-  Serial.println(F("╚══════════════════════════════════════════════════════════╝"));
-  Serial.println(F(""));
-  Serial.println(F("🎯 Learn Arduino fundamentals through hands-on practices"));
-  Serial.println(F("🔧 Hardware: Arduino Nano + breadboard components"));
-  Serial.println(F("📚 5 practices: GPIO, Analog, PWM, RGB, 7-Segment"));
-  Serial.println(F(""));
-}
-
-void showMainMenu() {
-  showMenu = true;
-  practiceRunning = false;
-  practiceActive = false;
-  currentPractice = -1;
-  
-  Serial.println(F(""));
-  Serial.println(F("═══════════════ PRACTICE MENU ═══════════════"));
-  Serial.println(F(""));
-  Serial.println(F("  1 → Digital GPIO Control (Beginner, ~10min)"));
-  Serial.println(F("      LEDs, buttons, basic I/O"));
-  Serial.println(F(""));
-  Serial.println(F("  2 → Analog Input Processing (Beginner, ~8min)"));
-  Serial.println(F("      Potentiometer, ADC, PWM"));
-  Serial.println(F(""));
-  Serial.println(F("  3 → PWM & Servo Control (Intermediate, ~12min)"));
-  Serial.println(F("      Servo motors, smooth control"));
-  Serial.println(F(""));
-  Serial.println(F("  4 → RGB LED Color Mixing (Intermediate, ~15min)"));
-  Serial.println(F("      Color theory, animations"));
-  Serial.println(F(""));
-  Serial.println(F("  5 → 7-Segment Display (Advanced, ~20min)"));
-  Serial.println(F("      Multiplexing, timing"));
-  Serial.println(F(""));
-  Serial.println(F("═══════════════════════════════════════════════════════"));
-  Serial.println(F(""));
-  Serial.println(F("Commands: 1-5 (start), 'info' (system), 'salir' (exit)"));
-  Serial.print(F("👉 Selection: "));
-}
-
-// ============================================
-// USER CONFIRMATION SYSTEM
-// ============================================
-void waitForUserReady() {
-  Serial.println(F(""));
-  Serial.println(F("┌─────────────────────────────────────────────────────────┐"));
-  Serial.println(F("│                    SYSTEM READY                        │"));
-  Serial.println(F("└─────────────────────────────────────────────────────────┘"));
-  Serial.println(F(""));
-  Serial.println(F("Press ENTER to continue or type 'salir' to exit..."));
-  
-  waitingForConfirmation = true;
-  clearInputBuffer();
-  
-  while (waitingForConfirmation && !systemShutdown) {
-    if (Serial.available()) {
-      if (readSecureInput()) {
-        String input = String(inputBuffer);
-        input.trim();
-        input.toLowerCase();
-        
-        if (input == "salir") {
-          systemShutdown = true;
-          return;
-        }
-        
-        waitingForConfirmation = false;
-        Serial.println(F("Starting Arduino learning..."));
-        delay(1000);
-      }
-    }
-  }
-}
-
-void waitForUserConfirmation(String message) {
-  Serial.println(F(""));
-  Serial.println(F("┌─────────────────────────────────────────────────────────┐"));
-  Serial.print(F("│ "));
-  int padding = (55 - message.length()) / 2;
-  for (int i = 0; i < padding; i++) Serial.print(F(" "));
-  Serial.print(message);
-  for (int i = 0; i < (55 - message.length() - padding); i++) Serial.print(F(" "));
-  Serial.println(F(" │"));
-  Serial.println(F("└─────────────────────────────────────────────────────────┘"));
-  Serial.println(F(""));
-  Serial.println(F("Press ENTER to continue, 'menu' for main menu, or 'salir' to exit..."));
-  
-  waitingForConfirmation = true;
-  clearInputBuffer();
-  
-  while (waitingForConfirmation && !systemShutdown) {
-    if (Serial.available()) {
-      if (readSecureInput()) {
-        String input = String(inputBuffer);
-        input.trim();
-        input.toLowerCase();
-        
-        if (input == "salir") {
-          systemShutdown = true;
-          return;
-        }
-        if (input == "menu") {
-          exitCurrentPractice();
-          showMainMenu();
-          return;
-        }
-        
-        waitingForConfirmation = false;
-        Serial.println(F("Continuing..."));
-        delay(500);
-      }
-    }
-  }
-}
-
-// ============================================
-// SECURE INPUT HANDLING
-// ============================================
-void clearInputBuffer() {
-  memset(inputBuffer, 0, sizeof(inputBuffer));
-  inputIndex = 0;
-}
-
-bool readSecureInput() {
-  char inChar = Serial.read();
-  
-  if (inChar == '\n' || inChar == '\r') {
-    if (inputIndex > 0) {
-      inputBuffer[inputIndex] = '\0'; // Null terminate
-      return true;
-    }
-    return false;
-  } else if (inChar >= ' ' && inputIndex < MAX_INPUT_LENGTH) {
-    inputBuffer[inputIndex++] = inChar;
-    if (!practiceRunning || waitingForConfirmation) {
-      Serial.print(inChar);
-    }
-  }
-  // SECURE: Ignore characters if buffer is full
-  
-  return false;
-}
-
-void handleSerialInput() {
+void manejarEntradaSerial() {
   while (Serial.available()) {
-    if (readSecureInput()) {
-      processInput(String(inputBuffer));
-      clearInputBuffer();
-    }
-  }
-}
-
-void processInput(String input) {
-  input.trim();
-  input.toLowerCase();
-  
-  // SECURE: Global exit command with proper cleanup
-  if (input == "salir") {
-    systemShutdown = true;
-    return;
-  }
-  
-  if (!practiceRunning) {
-    // Menu mode with validation
-    if (input == "1" && validatePracticeStart(0)) startPractice(0);
-    else if (input == "2" && validatePracticeStart(1)) startPractice(1);
-    else if (input == "3" && validatePracticeStart(2)) startPractice(2);
-    else if (input == "4" && validatePracticeStart(3)) startPractice(3);
-    else if (input == "5" && validatePracticeStart(4)) startPractice(4);
-    else if (input == "info") showSystemInfo();
-    else {
-      Serial.println();
-      Serial.println(F("❌ Invalid. Use: 1-5, 'info', or 'salir'"));
-      Serial.print(F("👉 Selection: "));
-    }
-  } else if (!waitingForConfirmation) {
-    handlePracticeCommand(input);
-  }
-}
-
-// SECURE: Validate practice can start
-bool validatePracticeStart(int practiceNum) {
-  if (practiceNum < 0 || practiceNum > 4) {
-    Serial.println(F("❌ Invalid practice number"));
-    return false;
-  }
-  
-  // Check available memory
-  if (getFreeRAM() < 200) {
-    Serial.println(F("❌ Insufficient memory"));
-    return false;
-  }
-  
-  return true;
-}
-
-void handleModeButton() {
-  bool currentButtonState = digitalRead(MODE_BUTTON);
-  unsigned long currentTime = millis();
-  
-  if (currentButtonState && !lastButtonState && 
-      (currentTime - lastButtonPress > 300)) {
+    char charEntrada = Serial.read();
     
-    if (practiceRunning) {
-      Serial.println(F("\n🔴 HARDWARE BUTTON - EMERGENCY EXIT"));
-      exitCurrentPractice();
-      showMainMenu();
+    if (charEntrada == '\n' || charEntrada == '\r') {
+      if (bufferEntrada.length() > 0) {
+        procesarEntrada(bufferEntrada);
+        bufferEntrada = "";
+      }
+    } else if (charEntrada >= ' ') {
+      bufferEntrada += charEntrada;
+      Serial.print(charEntrada);
     }
-    
-    lastButtonPress = currentTime;
   }
+}
+
+void procesarEntrada(String entrada) {
+  entrada.trim();
+  entrada.toLowerCase();
   
-  lastButtonState = currentButtonState;
+  switch (estadoActual) {
+    case MENU_PRINCIPAL:
+      manejarEntradaMenuPrincipal(entrada);
+      break;
+    case PRACTICA_1:
+      manejarEntradaPractica1(entrada);
+      break;
+    case PRACTICA_2:
+      manejarEntradaPractica2(entrada);
+      break;
+    case PRACTICA_3:
+      manejarEntradaPractica3(entrada);
+      break;
+    case PRACTICA_4:
+      manejarEntradaPractica4(entrada);
+      break;
+    case PRACTICA_5:
+      manejarEntradaPractica5(entrada);
+      break;
+  }
 }
 
 // ============================================
-// PRACTICE MANAGEMENT
+// BIENVENIDA Y MENÚ PRINCIPAL
 // ============================================
-void startPractice(int practiceNum) {
+void mostrarMensajeBienvenida() {
+  Serial.println(F(""));
+  Serial.println(F("========================================"));
+  Serial.println(F("   SISTEMA DE APRENDIZAJE ARDUINO NANO"));
+  Serial.println(F("      Suite de Prácticas Educativas"));
+  Serial.println(F("========================================"));
+  Serial.println(F(""));
+  Serial.println(F("Aprende fundamentos de Arduino a través"));
+  Serial.println(F("de 5 prácticas interactivas con guía"));
+  Serial.println(F("paso a paso y comandos interactivos."));
+  Serial.println(F(""));
+}
+
+void mostrarMenuPrincipal() {
+  Serial.println(F(""));
+  Serial.println(F("========== MENÚ PRINCIPAL =========="));
+  Serial.println(F(""));
+  Serial.println(F("Prácticas Disponibles:"));
+  Serial.println(F(""));
+  Serial.println(F("1 - Control GPIO Digital"));
+  Serial.println(F("    LEDs, botones, E/S básica"));
+  Serial.println(F("    Dificultad: Principiante"));
+  Serial.println(F(""));
+  Serial.println(F("2 - Procesamiento de Entrada Analógica"));
+  Serial.println(F("    Potenciómetro, ADC, PWM"));
+  Serial.println(F("    Dificultad: Principiante"));
+  Serial.println(F(""));
+  Serial.println(F("3 - Control PWM y Servo"));
+  Serial.println(F("    Servomotores, control suave"));
+  Serial.println(F("    Dificultad: Intermedio"));
+  Serial.println(F(""));
+  Serial.println(F("4 - Mezcla de Colores LED RGB"));
+  Serial.println(F("    Teoría del color, animaciones"));
+  Serial.println(F("    Dificultad: Intermedio"));
+  Serial.println(F(""));
+  Serial.println(F("5 - Display de 7 Segmentos"));
+  Serial.println(F("    Multiplexado, temporización"));
+  Serial.println(F("    Dificultad: Avanzado"));
+  Serial.println(F(""));
+  Serial.println(F("info - Información del sistema"));
+  Serial.println(F(""));
+  Serial.println(F("==================================="));
+  Serial.print(F("Ingresa tu opción: "));
+}
+
+void manejarMenuPrincipal() {
+  digitalWrite(LED_ESTADO, (millis() / 1000) % 2);
+}
+
+void manejarEntradaMenuPrincipal(String entrada) {
+  if (entrada == "1") {
+    iniciarPractica1();
+  } else if (entrada == "2") {
+    iniciarPractica2();
+  } else if (entrada == "3") {
+    iniciarPractica3();
+  } else if (entrada == "4") {
+    iniciarPractica4();
+  } else if (entrada == "5") {
+    iniciarPractica5();
+  } else if (entrada == "info") {
+    mostrarInfoSistema();
+    mostrarMenuPrincipal();
+  } else {
+    Serial.println();
+    Serial.println(F("Selección inválida. Por favor ingresa 1-5 o 'info'"));
+    Serial.print(F("Ingresa tu opción: "));
+  }
+}
+
+// ============================================
+// PRÁCTICA 1: CONTROL GPIO DIGITAL
+// ============================================
+void iniciarPractica1() {
+  estadoActual = PRACTICA_1;
+  practicaActiva = true;
+  
+  estadoP1.estadoLedRojo = false;
+  estadoP1.estadoLedVerde = false;
+  estadoP1.ultimoEstadoBoton = false;
+  estadoP1.ultimoTiempoParpadeo = 0;
+  estadoP1.intervaloParpadeo = 500;
+  
+  apagarTodasLasSalidas();
+  pinMode(SHARED_D3, OUTPUT);
+  pinMode(SHARED_D4, OUTPUT);
+  pinMode(SHARED_D5, INPUT);
+  
+  mostrarInfoPractica1();
+  mostrarMenuPractica1();
+}
+
+void mostrarInfoPractica1() {
   Serial.println();
+  Serial.println(F("========================================"));
+  Serial.println(F("   PRÁCTICA 1: CONTROL GPIO DIGITAL"));
+  Serial.println(F("========================================"));
+  Serial.println(F(""));
+  Serial.println(F("Configuración de Hardware:"));
+  Serial.println(F("- LED Rojo: D3 -> 220ohm -> LED+ -> LED- -> GND"));
+  Serial.println(F("- LED Verde: D4 -> 220ohm -> LED+ -> LED- -> GND"));
+  Serial.println(F("- Botón: D5 <- Botón <- 10kohm <- GND"));
+  Serial.println(F("         Terminal del botón -> 5V"));
+  Serial.println(F(""));
+  Serial.println(F("Objetivos de Aprendizaje:"));
+  Serial.println(F("- Control de E/S digital"));
+  Serial.println(F("- Control de LED con digitalWrite()"));
+  Serial.println(F("- Lectura de botón con digitalRead()"));
+  Serial.println(F("- Temporización no bloqueante"));
+  Serial.println(F(""));
+}
+
+void mostrarMenuPractica1() {
+  Serial.println(F("---------- Comandos Práctica 1 ----------"));
+  Serial.println(F("rapido   - Parpadeo rápido (100ms)"));
+  Serial.println(F("normal   - Parpadeo normal (500ms)"));
+  Serial.println(F("lento    - Parpadeo lento (1000ms)"));
+  Serial.println(F("estado   - Mostrar estado actual"));
+  Serial.println(F("ayuda    - Mostrar este menú"));
+  Serial.println(F("salir    - Volver al menú principal"));
+  Serial.println(F("------------------------------------------"));
+  Serial.println(F(""));
+  Serial.println(F("El LED rojo parpadeará automáticamente."));
+  Serial.println(F("Presiona el botón para alternar LED verde."));
+  Serial.println(F(""));
+  Serial.print(F("Práctica 1> "));
+}
+
+void ejecutarPractica1() {
+  if (!practicaActiva) return;
   
-  currentPractice = practiceNum;
-  practiceRunning = true;
-  practiceActive = false;
-  showMenu = false;
+  unsigned long tiempoActual = millis();
   
-  showPracticeIntroduction(practiceNum);
-  if (systemShutdown) return;
+  if (tiempoActual - estadoP1.ultimoTiempoParpadeo >= estadoP1.intervaloParpadeo) {
+    estadoP1.estadoLedRojo = !estadoP1.estadoLedRojo;
+    digitalWrite(SHARED_D3, estadoP1.estadoLedRojo);
+    estadoP1.ultimoTiempoParpadeo = tiempoActual;
+  }
   
-  waitForUserConfirmation("READY TO START");
-  if (systemShutdown) return;
-  
-  turnOffAllOutputs();
-  
-  if (!configurePinsForPractice(practiceNum)) {
-    Serial.println(F("❌ Pin configuration failed"));
-    exitCurrentPractice();
-    showMainMenu();
+  bool estadoBotonActual = digitalRead(SHARED_D5);
+  if (estadoBotonActual && !estadoP1.ultimoEstadoBoton) {
+    estadoP1.estadoLedVerde = !estadoP1.estadoLedVerde;
+    digitalWrite(SHARED_D4, estadoP1.estadoLedVerde);
+    
+    Serial.println();
+    Serial.print(F("¡Botón presionado! LED Verde: "));
+    Serial.println(estadoP1.estadoLedVerde ? F("ENCENDIDO") : F("APAGADO"));
+    Serial.print(F("Práctica 1> "));
+  }
+  estadoP1.ultimoEstadoBoton = estadoBotonActual;
+}
+
+void manejarEntradaPractica1(String entrada) {
+  if (entrada == "salir") {
+    salirPracticaActual();
     return;
+  } else if (entrada == "rapido") {
+    estadoP1.intervaloParpadeo = 100;
+    Serial.println(F("Velocidad de parpadeo: RÁPIDO (100ms)"));
+  } else if (entrada == "normal") {
+    estadoP1.intervaloParpadeo = 500;
+    Serial.println(F("Velocidad de parpadeo: NORMAL (500ms)"));
+  } else if (entrada == "lento") {
+    estadoP1.intervaloParpadeo = 1000;
+    Serial.println(F("Velocidad de parpadeo: LENTO (1000ms)"));
+  } else if (entrada == "estado") {
+    mostrarEstadoPractica1();
+  } else if (entrada == "ayuda") {
+    mostrarMenuPractica1();
+    return;
+  } else {
+    Serial.println(F("Comando desconocido. Escribe 'ayuda' para comandos disponibles."));
   }
   
-  showHardwareSetup(practiceNum);
-  if (systemShutdown) return;
-  
-  waitForUserConfirmation("HARDWARE CONNECTED");
-  if (systemShutdown) return;
-  
-  showPracticeHeader(practiceNum);
-  initializePracticeState(practiceNum);
-  
-  waitForUserConfirmation("START PRACTICE");
-  if (systemShutdown) return;
-  
-  practiceActive = true;
-  
-  Serial.println(F(""));
-  Serial.println(F("🟢 PRACTICE ACTIVE! Watch hardware..."));
-  Serial.println(F("Commands available or 'salir' to exit"));
-  Serial.println(F(""));
+  Serial.print(F("Práctica 1> "));
 }
 
-void showPracticeIntroduction(int practice) {
-  Serial.println(F(""));
-  Serial.println(F("╔═══════════════════════════════════════════════════════════╗"));
-  
-  switch (practice) {
-    case 0:
-      Serial.println(F("║                 PRACTICE 1: DIGITAL GPIO                 ║"));
-      Serial.println(F("╚═══════════════════════════════════════════════════════════╝"));
-      Serial.println(F(""));
-      Serial.println(F("🎯 Learn: Digital I/O, LEDs, buttons"));
-      Serial.println(F("🔧 Skills: pinMode(), digitalWrite(), digitalRead()"));
-      Serial.println(F("⚡ Concepts: HIGH/LOW states, pull-down resistors"));
-      break;
-      
-    case 1:
-      Serial.println(F("║               PRACTICE 2: ANALOG INPUT                   ║"));
-      Serial.println(F("╚═══════════════════════════════════════════════════════════╝"));
-      Serial.println(F(""));
-      Serial.println(F("🎯 Learn: ADC, potentiometers, PWM output"));
-      Serial.println(F("🔧 Skills: analogRead(), analogWrite(), map()"));
-      Serial.println(F("⚡ Concepts: 10-bit ADC, voltage dividers"));
-      break;
-      
-    case 2:
-      Serial.println(F("║              PRACTICE 3: PWM & SERVO                     ║"));
-      Serial.println(F("╚═══════════════════════════════════════════════════════════╝"));
-      Serial.println(F(""));
-      Serial.println(F("🎯 Learn: Servo control, smooth movements"));
-      Serial.println(F("🔧 Skills: Servo library, position control"));
-      Serial.println(F("⚡ Concepts: PWM signals, servo timing"));
-      break;
-      
-    case 3:
-      Serial.println(F("║               PRACTICE 4: RGB COLORS                     ║"));
-      Serial.println(F("╚═══════════════════════════════════════════════════════════╝"));
-      Serial.println(F(""));
-      Serial.println(F("🎯 Learn: Color mixing, animations"));
-      Serial.println(F("🔧 Skills: RGB control, color algorithms"));
-      Serial.println(F("⚡ Concepts: Color theory, state machines"));
-      break;
-      
-    case 4:
-      Serial.println(F("║              PRACTICE 5: 7-SEGMENT                       ║"));
-      Serial.println(F("╚═══════════════════════════════════════════════════════════╝"));
-      Serial.println(F(""));
-      Serial.println(F("🎯 Learn: Display multiplexing, timing"));
-      Serial.println(F("🔧 Skills: Multi-digit displays, patterns"));
-      Serial.println(F("⚡ Concepts: Persistence of vision, binary"));
-      break;
-  }
-  
-  Serial.println(F(""));
-  delay(2000);
-}
-
-void showHardwareSetup(int practice) {
-  Serial.println(F(""));
-  Serial.println(F("🔧 HARDWARE SETUP:"));
-  Serial.println(F(""));
-  
-  switch (practice) {
-    case 0:
-      Serial.println(F("Components: 2x LEDs, 2x 220Ω, 1x button, 1x 10kΩ"));
-      Serial.println(F(""));
-      Serial.println(F("Connections:"));
-      Serial.println(F("Red LED:    D3 → 220Ω → LED+ → LED- → GND"));
-      Serial.println(F("Green LED:  D4 → 220Ω → LED+ → LED- → GND"));
-      Serial.println(F("Button:     D5 ← Button ← 10kΩ ← GND"));
-      Serial.println(F("            Button other terminal → 5V"));
-      break;
-      
-    case 1:
-      Serial.println(F("Components: 1x 10kΩ pot, 1x LED, 1x 220Ω"));
-      Serial.println(F(""));
-      Serial.println(F("Connections:"));
-      Serial.println(F("Pot: Terminal1→5V, Middle→A2, Terminal3→GND"));
-      Serial.println(F("LED: D6 → 220Ω → LED+ → LED- → GND"));
-      break;
-      
-    case 2:
-      Serial.println(F("Components: 1x servo, 1x LED, 1x 220Ω, 1x pot"));
-      Serial.println(F(""));
-      Serial.println(F("Connections:"));
-      Serial.println(F("Servo: Orange→D9, Red→5V, Brown→GND"));
-      Serial.println(F("LED: D6 → 220Ω → LED+ → LED- → GND"));
-      Serial.println(F("Pot: Same as Practice 2"));
-      break;
-      
-    case 3:
-      Serial.println(F("Components: 1x RGB LED, 3x 220Ω"));
-      Serial.println(F(""));
-      Serial.println(F("Connections:"));
-      Serial.println(F("RGB Red:   D9 → 220Ω → Red pin"));
-      Serial.println(F("RGB Green: D10 → 220Ω → Green pin"));
-      Serial.println(F("RGB Blue:  D11 → 220Ω → Blue pin"));
-      Serial.println(F("RGB Common: Common cathode → GND"));
-      break;
-      
-    case 4:
-      Serial.println(F("Components: 4-digit 7-seg, 8x 220Ω, 4x transistors"));
-      Serial.println(F(""));
-      Serial.println(F("Connections:"));
-      Serial.println(F("Segments: D3-D10 → 220Ω → Segments A-G,DP"));
-      Serial.println(F("Digits: D11,D12,A0,A1 → 1kΩ → Transistors"));
-      Serial.println(F("⚠️ Complex wiring - check diagram"));
-      break;
-  }
-  
-  Serial.println(F(""));
-  Serial.println(F("⚠️ Check connections before continuing!"));
-  Serial.println(F(""));
-  delay(2000);
-}
-
-void showPracticeHeader(int practice) {
-  Serial.println(F("═══════════════════════════════════════════════════════"));
-  
-  switch (practice) {
-    case 0:
-      Serial.println(F("           🚀 PRACTICE 1 ACTIVE"));
-      Serial.println(F("═══════════════════════════════════════════════════════"));
-      Serial.println(F("Commands: 'f'=fast, 'n'=normal, 's'=slow, 'status'"));
-      break;
-      
-    case 1:
-      Serial.println(F("           🚀 PRACTICE 2 ACTIVE"));
-      Serial.println(F("═══════════════════════════════════════════════════════"));
-      Serial.println(F("Commands: 'status' (turn potentiometer)"));
-      break;
-      
-    case 2:
-      Serial.println(F("           🚀 PRACTICE 3 ACTIVE"));
-      Serial.println(F("═══════════════════════════════════════════════════════"));
-      Serial.println(F("Commands: 'center', 'test', 'status'"));
-      break;
-      
-    case 3:
-      Serial.println(F("           🚀 PRACTICE 4 ACTIVE"));
-      Serial.println(F("═══════════════════════════════════════════════════════"));
-      Serial.println(F("Commands: 'mode', 'faster', 'slower', 'status'"));
-      break;
-      
-    case 4:
-      Serial.println(F("           🚀 PRACTICE 5 ACTIVE"));
-      Serial.println(F("═══════════════════════════════════════════════════════"));
-      Serial.println(F("Commands: number(0-9999), 'clear', 'zeros', 'test'"));
-      break;
-  }
-  
-  Serial.println(F("Global: 'pause', 'menu', 'salir'"));
-  Serial.println(F("═══════════════════════════════════════════════════════"));
-}
-
-void exitCurrentPractice() {
+void mostrarEstadoPractica1() {
   Serial.println();
-  Serial.println(F("🔴 EXITING PRACTICE"));
+  Serial.println(F("--- Estado Práctica 1 ---"));
+  Serial.print(F("LED Rojo: "));
+  Serial.println(estadoP1.estadoLedRojo ? F("ENCENDIDO") : F("APAGADO"));
+  Serial.print(F("LED Verde: "));
+  Serial.println(estadoP1.estadoLedVerde ? F("ENCENDIDO") : F("APAGADO"));
+  Serial.print(F("Intervalo parpadeo: "));
+  Serial.print(estadoP1.intervaloParpadeo);
+  Serial.println(F("ms"));
+  Serial.print(F("Estado botón: "));
+  Serial.println(digitalRead(SHARED_D5) ? F("PRESIONADO") : F("LIBERADO"));
+  Serial.println(F("-------------------------"));
+}
+
+// ============================================
+// PRÁCTICA 2: PROCESAMIENTO ENTRADA ANALÓGICA
+// ============================================
+void iniciarPractica2() {
+  estadoActual = PRACTICA_2;
+  practicaActiva = true;
   
-  turnOffAllOutputs();
+  estadoP2.brillo = 0;
+  estadoP2.ultimoValorPot = -1;
   
-  // SECURE: Always detach servo
-  if (myServo.attached()) {
-    myServo.detach();
-    Serial.println(F("✓ Servo detached"));
+  apagarTodasLasSalidas();
+  pinMode(SHARED_D6, OUTPUT);
+  
+  mostrarInfoPractica2();
+  mostrarMenuPractica2();
+}
+
+void mostrarInfoPractica2() {
+  Serial.println();
+  Serial.println(F("========================================"));
+  Serial.println(F("  PRÁCTICA 2: ENTRADA ANALÓGICA"));
+  Serial.println(F("========================================"));
+  Serial.println(F(""));
+  Serial.println(F("Configuración de Hardware:"));
+  Serial.println(F("- Potenciómetro: Terminal1 -> 5V"));
+  Serial.println(F("                 Centro -> A2"));
+  Serial.println(F("                 Terminal3 -> GND"));
+  Serial.println(F("- LED: D6 -> 220ohm -> LED+ -> LED- -> GND"));
+  Serial.println(F(""));
+  Serial.println(F("Objetivos de Aprendizaje:"));
+  Serial.println(F("- Conversión Analógica-Digital (ADC)"));
+  Serial.println(F("- Lectura de valores de potenciómetro"));
+  Serial.println(F("- Salida PWM para brillo de LED"));
+  Serial.println(F("- Mapeo y escalado de valores"));
+  Serial.println(F(""));
+}
+
+void mostrarMenuPractica2() {
+  Serial.println(F("---------- Comandos Práctica 2 ----------"));
+  Serial.println(F("estado   - Mostrar lecturas actuales"));
+  Serial.println(F("ayuda    - Mostrar este menú"));
+  Serial.println(F("salir    - Volver al menú principal"));
+  Serial.println(F("------------------------------------------"));
+  Serial.println(F(""));
+  Serial.println(F("Gira el potenciómetro para controlar brillo LED."));
+  Serial.println(F("Observa la salida serial para valores en tiempo real."));
+  Serial.println(F(""));
+  Serial.print(F("Práctica 2> "));
+}
+
+void ejecutarPractica2() {
+  if (!practicaActiva) return;
+  
+  int valorPot = analogRead(POTENCIOMETRO);
+  estadoP2.brillo = map(valorPot, 0, 1023, 0, 255);
+  analogWrite(SHARED_D6, estadoP2.brillo);
+  
+  if (abs(valorPot - estadoP2.ultimoValorPot) > 10) {
+    Serial.println();
+    Serial.print(F("Potenciómetro: "));
+    Serial.print(valorPot);
+    Serial.print(F(" | PWM: "));
+    Serial.print(estadoP2.brillo);
+    Serial.print(F(" | Brillo: "));
+    Serial.print(map(valorPot, 0, 1023, 0, 100));
+    Serial.println(F("%"));
+    Serial.print(F("Práctica 2> "));
+    
+    estadoP2.ultimoValorPot = valorPot;
+  }
+}
+
+void manejarEntradaPractica2(String entrada) {
+  if (entrada == "salir") {
+    salirPracticaActual();
+    return;
+  } else if (entrada == "estado") {
+    mostrarEstadoPractica2();
+  } else if (entrada == "ayuda") {
+    mostrarMenuPractica2();
+    return;
+  } else {
+    Serial.println(F("Comando desconocido. Escribe 'ayuda' para comandos disponibles."));
   }
   
-  practiceRunning = false;
-  practiceActive = false;
-  currentPractice = -1;
-  waitingForConfirmation = false;
+  Serial.print(F("Práctica 2> "));
+}
+
+void mostrarEstadoPractica2() {
+  int valorPot = analogRead(POTENCIOMETRO);
+  Serial.println();
+  Serial.println(F("--- Estado Práctica 2 ---"));
+  Serial.print(F("Potenciómetro crudo: "));
+  Serial.print(valorPot);
+  Serial.print(F(" ("));
+  Serial.print((valorPot / 1023.0) * 5.0, 2);
+  Serial.println(F("V)"));
+  Serial.print(F("Valor PWM: "));
+  Serial.print(estadoP2.brillo);
+  Serial.print(F(" ("));
+  Serial.print((estadoP2.brillo / 255.0) * 100, 1);
+  Serial.println(F("%)"));
+  Serial.println(F("-------------------------"));
+}
+
+// ============================================
+// PRÁCTICA 3: CONTROL PWM Y SERVO
+// ============================================
+void iniciarPractica3() {
+  estadoActual = PRACTICA_3;
+  practicaActiva = true;
   
-  Serial.println(F("✓ Cleanup complete"));
+  estadoP3.posicionServo = 90;
+  estadoP3.posicionObjetivoServo = 90;
+  estadoP3.ultimaActualizacionServo = 0;
+  estadoP3.brillo = 0;
+  
+  apagarTodasLasSalidas();
+  pinMode(SHARED_D6, OUTPUT);
+  miServo.attach(SHARED_D9);
+  miServo.write(90);
+  
+  mostrarInfoPractica3();
+  mostrarMenuPractica3();
+}
+
+void mostrarInfoPractica3() {
+  Serial.println();
+  Serial.println(F("========================================"));
+  Serial.println(F("    PRÁCTICA 3: CONTROL PWM Y SERVO"));
+  Serial.println(F("========================================"));
+  Serial.println(F(""));
+  Serial.println(F("Configuración de Hardware:"));
+  Serial.println(F("- Servo: Cable naranja -> D9"));
+  Serial.println(F("         Cable rojo -> 5V"));
+  Serial.println(F("         Cable marrón -> GND"));
+  Serial.println(F("- LED: D6 -> 220ohm -> LED+ -> LED- -> GND"));
+  Serial.println(F("- Potenciómetro: Igual que Práctica 2"));
+  Serial.println(F(""));
+  Serial.println(F("Objetivos de Aprendizaje:"));
+  Serial.println(F("- Control de servomotor"));
+  Serial.println(F("- Transiciones suaves de posición"));
+  Serial.println(F("- Salidas PWM simultáneas"));
+  Serial.println(F("- Uso de librerías"));
+  Serial.println(F(""));
+}
+
+void mostrarMenuPractica3() {
+  Serial.println(F("---------- Comandos Práctica 3 ----------"));
+  Serial.println(F("centrar  - Mover servo al centro (90 grados)"));
+  Serial.println(F("probar   - Probar rango completo del servo"));
+  Serial.println(F("estado   - Mostrar posiciones actuales"));
+  Serial.println(F("ayuda    - Mostrar este menú"));
+  Serial.println(F("salir    - Volver al menú principal"));
+  Serial.println(F("------------------------------------------"));
+  Serial.println(F(""));
+  Serial.println(F("El potenciómetro controla LED y servo."));
+  Serial.println(F("El servo se mueve suavemente a la posición objetivo."));
+  Serial.println(F(""));
+  Serial.print(F("Práctica 3> "));
+}
+
+void ejecutarPractica3() {
+  if (!practicaActiva) return;
+  
+  unsigned long tiempoActual = millis();
+  
+  int valorPot = analogRead(POTENCIOMETRO);
+  
+  estadoP3.brillo = map(valorPot, 0, 1023, 0, 255);
+  analogWrite(SHARED_D6, estadoP3.brillo);
+  
+  estadoP3.posicionObjetivoServo = map(valorPot, 0, 1023, 0, 180);
+  
+  if (tiempoActual - estadoP3.ultimaActualizacionServo >= 15) {
+    if (estadoP3.posicionServo < estadoP3.posicionObjetivoServo) {
+      estadoP3.posicionServo++;
+    } else if (estadoP3.posicionServo > estadoP3.posicionObjetivoServo) {
+      estadoP3.posicionServo--;
+    }
+    miServo.write(estadoP3.posicionServo);
+    estadoP3.ultimaActualizacionServo = tiempoActual;
+  }
+}
+
+void manejarEntradaPractica3(String entrada) {
+  if (entrada == "salir") {
+    salirPracticaActual();
+    return;
+  } else if (entrada == "centrar") {
+    estadoP3.posicionObjetivoServo = 90;
+    Serial.println(F("Centrando servo a 90 grados..."));
+  } else if (entrada == "probar") {
+    probarRangoServo();
+  } else if (entrada == "estado") {
+    mostrarEstadoPractica3();
+  } else if (entrada == "ayuda") {
+    mostrarMenuPractica3();
+    return;
+  } else {
+    Serial.println(F("Comando desconocido. Escribe 'ayuda' para comandos disponibles."));
+  }
+  
+  Serial.print(F("Práctica 3> "));
+}
+
+void mostrarEstadoPractica3() {
+  Serial.println();
+  Serial.println(F("--- Estado Práctica 3 ---"));
+  Serial.print(F("Brillo LED: "));
+  Serial.print(estadoP3.brillo);
+  Serial.print(F(" ("));
+  Serial.print((estadoP3.brillo / 255.0) * 100, 1);
+  Serial.println(F("%)"));
+  Serial.print(F("Posición servo: "));
+  Serial.print(estadoP3.posicionServo);
+  Serial.print(F(" grados (Objetivo: "));
+  Serial.print(estadoP3.posicionObjetivoServo);
+  Serial.println(F(" grados)"));
+  Serial.println(F("-------------------------"));
+}
+
+void probarRangoServo() {
+  Serial.println();
+  Serial.println(F("Probando rango completo del servo..."));
+  
+  Serial.println(F("Moviendo a 0 grados"));
+  for (int pos = estadoP3.posicionServo; pos >= 0; pos--) {
+    miServo.write(pos);
+    delay(15);
+  }
   delay(1000);
-}
-
-void turnOffAllOutputs() {
-  for (int pin = 3; pin <= 12; pin++) {
-    digitalWrite(pin, LOW);
+  
+  Serial.println(F("Moviendo a 180 grados"));
+  for (int pos = 0; pos <= 180; pos++) {
+    miServo.write(pos);
+    delay(15);
   }
-  digitalWrite(A0, LOW);
-  digitalWrite(A1, LOW);
+  delay(1000);
+  
+  Serial.println(F("Regresando al centro"));
+  for (int pos = 180; pos >= 90; pos--) {
+    miServo.write(pos);
+    delay(15);
+  }
+  
+  estadoP3.posicionServo = 90;
+  estadoP3.posicionObjetivoServo = 90;
+  Serial.println(F("Prueba de servo completada"));
 }
 
-// SECURE: Return success/failure status
-bool configurePinsForPractice(int practice) {
-  switch (practice) {
+// ============================================
+// PRÁCTICA 4: MEZCLA DE COLORES LED RGB
+// ============================================
+void iniciarPractica4() {
+  estadoActual = PRACTICA_4;
+  practicaActiva = true;
+  
+  estadoP4.valorRojo = 0;
+  estadoP4.valorVerde = 0;
+  estadoP4.valorAzul = 0;
+  estadoP4.pasoColor = 0;
+  estadoP4.modoColor = 0;
+  estadoP4.ultimaActualizacionColor = 0;
+  
+  apagarTodasLasSalidas();
+  pinMode(SHARED_D9, OUTPUT);
+  pinMode(SHARED_D10, OUTPUT);
+  pinMode(SHARED_D11, OUTPUT);
+  
+  mostrarInfoPractica4();
+  mostrarMenuPractica4();
+}
+
+void mostrarInfoPractica4() {
+  Serial.println();
+  Serial.println(F("========================================"));
+  Serial.println(F("   PRÁCTICA 4: MEZCLA COLORES LED RGB"));
+  Serial.println(F("========================================"));
+  Serial.println(F(""));
+  Serial.println(F("Configuración de Hardware:"));
+  Serial.println(F("- LED RGB pin Rojo: D9 -> 220ohm -> Rojo"));
+  Serial.println(F("- LED RGB pin Verde: D10 -> 220ohm -> Verde"));
+  Serial.println(F("- LED RGB pin Azul: D11 -> 220ohm -> Azul"));
+  Serial.println(F("- LED RGB Cátodo Común -> GND"));
+  Serial.println(F(""));
+  Serial.println(F("Objetivos de Aprendizaje:"));
+  Serial.println(F("- Teoría del color RGB"));
+  Serial.println(F("- Algoritmos de mezcla de colores"));
+  Serial.println(F("- Programación de animaciones"));
+  Serial.println(F("- Diseño de máquinas de estado"));
+  Serial.println(F(""));
+}
+
+void mostrarMenuPractica4() {
+  Serial.println(F("---------- Comandos Práctica 4 ----------"));
+  Serial.println(F("modo     - Cambiar modo de animación"));
+  Serial.println(F("rojo     - Color rojo sólido"));
+  Serial.println(F("verde    - Color verde sólido"));
+  Serial.println(F("azul     - Color azul sólido"));
+  Serial.println(F("blanco   - Color blanco"));
+  Serial.println(F("apagar   - Apagar LED RGB"));
+  Serial.println(F("estado   - Mostrar valores de color actuales"));
+  Serial.println(F("ayuda    - Mostrar este menú"));
+  Serial.println(F("salir    - Volver al menú principal"));
+  Serial.println(F("------------------------------------------"));
+  Serial.println(F(""));
+  Serial.println(F("Iniciando con modo de animación arcoíris."));
+  Serial.println(F(""));
+  Serial.print(F("Práctica 4> "));
+}
+
+void ejecutarPractica4() {
+  if (!practicaActiva) return;
+  
+  unsigned long tiempoActual = millis();
+  
+  if (tiempoActual - estadoP4.ultimaActualizacionColor >= 50) {
+    actualizarColoresRGB();
+    estadoP4.ultimaActualizacionColor = tiempoActual;
+    estadoP4.pasoColor++;
+  }
+  
+  analogWrite(SHARED_D9, estadoP4.valorRojo);
+  analogWrite(SHARED_D10, estadoP4.valorVerde);
+  analogWrite(SHARED_D11, estadoP4.valorAzul);
+}
+
+void manejarEntradaPractica4(String entrada) {
+  if (entrada == "salir") {
+    salirPracticaActual();
+    return;
+  } else if (entrada == "modo") {
+    estadoP4.modoColor = (estadoP4.modoColor + 1) % 4;
+    estadoP4.pasoColor = 0;
+    Serial.print(F("Modo de animación cambiado a: "));
+    switch (estadoP4.modoColor) {
+      case 0: Serial.println(F("Arcoíris")); break;
+      case 1: Serial.println(F("Respiración")); break;
+      case 2: Serial.println(F("Estroboscópico")); break;
+      case 3: Serial.println(F("Estático")); break;
+    }
+  } else if (entrada == "rojo") {
+    establecerColorEstatico(255, 0, 0);
+    Serial.println(F("Color establecido a ROJO"));
+  } else if (entrada == "verde") {
+    establecerColorEstatico(0, 255, 0);
+    Serial.println(F("Color establecido a VERDE"));
+  } else if (entrada == "azul") {
+    establecerColorEstatico(0, 0, 255);
+    Serial.println(F("Color establecido a AZUL"));
+  } else if (entrada == "blanco") {
+    establecerColorEstatico(255, 255, 255);
+    Serial.println(F("Color establecido a BLANCO"));
+  } else if (entrada == "apagar") {
+    establecerColorEstatico(0, 0, 0);
+    Serial.println(F("LED RGB APAGADO"));
+  } else if (entrada == "estado") {
+    mostrarEstadoPractica4();
+  } else if (entrada == "ayuda") {
+    mostrarMenuPractica4();
+    return;
+  } else {
+    Serial.println(F("Comando desconocido. Escribe 'ayuda' para comandos disponibles."));
+  }
+  
+  Serial.print(F("Práctica 4> "));
+}
+
+void establecerColorEstatico(int rojo, int verde, int azul) {
+  estadoP4.modoColor = 3;
+  estadoP4.valorRojo = rojo;
+  estadoP4.valorVerde = verde;
+  estadoP4.valorAzul = azul;
+}
+
+void mostrarEstadoPractica4() {
+  Serial.println();
+  Serial.println(F("--- Estado Práctica 4 ---"));
+  Serial.print(F("Modo de animación: "));
+  switch (estadoP4.modoColor) {
+    case 0: Serial.println(F("Arcoíris")); break;
+    case 1: Serial.println(F("Respiración")); break;
+    case 2: Serial.println(F("Estroboscópico")); break;
+    case 3: Serial.println(F("Estático")); break;
+  }
+  Serial.print(F("Valores RGB: R="));
+  Serial.print(estadoP4.valorRojo);
+  Serial.print(F(" G="));
+  Serial.print(estadoP4.valorVerde);
+  Serial.print(F(" B="));
+  Serial.println(estadoP4.valorAzul);
+  Serial.print(F("Paso de animación: "));
+  Serial.println(estadoP4.pasoColor);
+  Serial.println(F("-------------------------"));
+}
+
+void actualizarColoresRGB() {
+  if (estadoP4.modoColor == 3) return;
+  
+  int fase = estadoP4.pasoColor % 360;
+  
+  switch (estadoP4.modoColor) {
     case 0:
-      pinMode(SHARED_D3, OUTPUT);
-      pinMode(SHARED_D4, OUTPUT);
-      pinMode(SHARED_D5, INPUT);
+      if (fase < 60) {
+        estadoP4.valorRojo = 255;
+        estadoP4.valorVerde = map(fase, 0, 59, 0, 255);
+        estadoP4.valorAzul = 0;
+      } else if (fase < 120) {
+        estadoP4.valorRojo = map(fase, 60, 119, 255, 0);
+        estadoP4.valorVerde = 255;
+        estadoP4.valorAzul = 0;
+      } else if (fase < 180) {
+        estadoP4.valorRojo = 0;
+        estadoP4.valorVerde = 255;
+        estadoP4.valorAzul = map(fase, 120, 179, 0, 255);
+      } else if (fase < 240) {
+        estadoP4.valorRojo = 0;
+        estadoP4.valorVerde = map(fase, 180, 239, 255, 0);
+        estadoP4.valorAzul = 255;
+      } else if (fase < 300) {
+        estadoP4.valorRojo = map(fase, 240, 299, 0, 255);
+        estadoP4.valorVerde = 0;
+        estadoP4.valorAzul = 255;
+      } else {
+        estadoP4.valorRojo = 255;
+        estadoP4.valorVerde = 0;
+        estadoP4.valorAzul = map(fase, 300, 359, 255, 0);
+      }
       break;
       
     case 1:
-      pinMode(SHARED_D6, OUTPUT);
+      {
+        int brillo = (sin(estadoP4.pasoColor * 0.1) + 1) * 127.5;
+        estadoP4.valorRojo = brillo;
+        estadoP4.valorVerde = brillo;
+        estadoP4.valorAzul = brillo;
+      }
       break;
       
     case 2:
-      pinMode(SHARED_D6, OUTPUT);
-      myServo.attach(SHARED_D9);
-      myServo.write(90);
-      break;
-      
-    case 3:
-      pinMode(SHARED_D9, OUTPUT);
-      pinMode(SHARED_D10, OUTPUT);
-      pinMode(SHARED_D11, OUTPUT);
-      break;
-      
-    case 4:
-      for (int i = 3; i <= 12; i++) {
-        pinMode(i, OUTPUT);
-        digitalWrite(i, LOW);
-      }
-      pinMode(SHARED_A0, OUTPUT);
-      pinMode(SHARED_A1, OUTPUT);
-      break;
-      
-    default:
-      return false;
-  }
-  
-  return true;
-}
-
-void initializePracticeState(int practice) {
-  switch (practice) {
-    case 0:
-      state.blinkInterval = 500;
-      Serial.println(F("🔴 Red LED blinks, button controls green"));
-      break;
-      
-    case 1:
-      Serial.println(F("🎛️ Turn potentiometer to control LED"));
-      break;
-      
-    case 2:
-      state.servoPosition = 90;
-      state.targetServoPosition = 90;
-      Serial.println(F("🎛️ Potentiometer controls LED and servo"));
-      break;
-      
-    case 3:
-      state.colorMode = 0;
-      state.colorStep = 0;
-      Serial.println(F("🌈 Rainbow animation starting"));
-      break;
-      
-    case 4:
-      state.displayNumber = 1234;
-      state.currentDigit = 0;
-      Serial.println(F("🔢 Showing: 1234"));
-      break;
-  }
-}
-
-// ============================================
-// PRACTICE EXECUTION
-// ============================================
-void runCurrentPractice() {
-  switch (currentPractice) {
-    case 0: runPractice1(); break;
-    case 1: runPractice2(); break;
-    case 2: runPractice3(); break;
-    case 3: runPractice4(); break;
-    case 4: runPractice5(); break;
-  }
-  
-  updateStatusLED();
-}
-
-void runPractice1() {
-  unsigned long currentTime = millis();
-  
-  // Red LED blinking
-  if (currentTime - state.lastBlinkTime >= state.blinkInterval) {
-    state.redLedState = !state.redLedState;
-    digitalWrite(SHARED_D3, state.redLedState);
-    state.lastBlinkTime = currentTime;
-    
-    Serial.print(F("🔴 Red: "));
-    Serial.println(state.redLedState ? F("ON") : F("OFF"));
-  }
-  
-  // Button for green LED
-  bool currentButtonState = digitalRead(SHARED_D5);
-  if (currentButtonState && !state.lastInputButtonState) {
-    state.greenLedState = !state.greenLedState;
-    digitalWrite(SHARED_D4, state.greenLedState);
-    
-    Serial.print(F("🟢 Button! Green: "));
-    Serial.println(state.greenLedState ? F("ON") : F("OFF"));
-  }
-  state.lastInputButtonState = currentButtonState;
-}
-
-void runPractice2() {
-  int potValue = analogRead(POTENTIOMETER);
-  state.brightness = map(potValue, 0, 1023, 0, 255);
-  analogWrite(SHARED_D6, state.brightness);
-  
-  if (abs(potValue - state.lastPotValue) > 10) {
-    Serial.print(F("📊 Pot:"));
-    Serial.print(potValue);
-    Serial.print(F(" PWM:"));
-    Serial.print(state.brightness);
-    Serial.print(F(" ("));
-    Serial.print(map(potValue, 0, 1023, 0, 100));
-    Serial.println(F("%)"));
-    
-    state.lastPotValue = potValue;
-  }
-}
-
-void runPractice3() {
-  unsigned long currentTime = millis();
-  
-  int potValue = analogRead(POTENTIOMETER);
-  
-  // LED brightness
-  state.brightness = map(potValue, 0, 1023, 0, 255);
-  analogWrite(SHARED_D6, state.brightness);
-  
-  // Servo position with bounds checking
-  state.targetServoPosition = map(potValue, 0, 1023, SERVO_MIN_ANGLE, SERVO_MAX_ANGLE);
-  
-  // SECURE: Smooth servo movement with bounds
-  if (currentTime - state.lastServoUpdate >= 15) {
-    if (state.servoPosition < state.targetServoPosition && state.servoPosition < SERVO_MAX_ANGLE) {
-      state.servoPosition++;
-    } else if (state.servoPosition > state.targetServoPosition && state.servoPosition > SERVO_MIN_ANGLE) {
-      state.servoPosition--;
-    }
-    
-    // SECURE: Clamp servo position
-    state.servoPosition = constrain(state.servoPosition, SERVO_MIN_ANGLE, SERVO_MAX_ANGLE);
-    
-    if (myServo.attached()) {
-      myServo.write(state.servoPosition);
-    }
-    state.lastServoUpdate = currentTime;
-  }
-  
-  // Status update
-  static unsigned long lastPrint = 0;
-  if (currentTime - lastPrint > 1000) {
-    Serial.print(F("📊 LED:"));
-    Serial.print(state.brightness);
-    Serial.print(F(" Servo:"));
-    Serial.print(state.servoPosition);
-    Serial.println(F("°"));
-    lastPrint = currentTime;
-  }
-}
-
-void runPractice4() {
-  unsigned long currentTime = millis();
-  
-  if (currentTime - state.lastColorUpdate >= 50) {
-    updateRGBColors();
-    state.lastColorUpdate = currentTime;
-    state.colorStep++;
-    
-    static int lastPrintStep = 0;
-    if (state.colorStep - lastPrintStep >= 100) {
-      Serial.print(F("🌈 RGB:("));
-      Serial.print(state.redValue);
-      Serial.print(F(","));
-      Serial.print(state.greenValue);
-      Serial.print(F(","));
-      Serial.print(state.blueValue);
-      Serial.println(F(")"));
-      lastPrintStep = state.colorStep;
-    }
-  }
-  
-  analogWrite(SHARED_D9, state.redValue);
-  analogWrite(SHARED_D10, state.greenValue);
-  analogWrite(SHARED_D11, state.blueValue);
-}
-
-void runPractice5() {
-  unsigned long currentTime = millis();
-  
-  if (currentTime - state.lastDisplayUpdate >= 2) {
-    updateSevenSegmentDisplay();
-    state.lastDisplayUpdate = currentTime;
-  }
-}
-
-// ============================================
-// PRACTICE COMMANDS
-// ============================================
-void handlePracticeCommand(String command) {
-  if (command == "pause") {
-    practiceActive = false;
-    Serial.println(F("⏸️ PAUSED - 'resume' to continue"));
-    return;
-  }
-  
-  if (command == "resume") {
-    practiceActive = true;
-    Serial.println(F("▶️ RESUMED"));
-    return;
-  }
-  
-  if (command == "menu") {
-    exitCurrentPractice();
-    showMainMenu();
-    return;
-  }
-  
-  // Practice-specific commands
-  switch (currentPractice) {
-    case 0: // Practice 1
-      if (command == "f") {
-        state.blinkInterval = 100;
-        Serial.println(F("⚡ Fast blink (100ms)"));
-      } else if (command == "n") {
-        state.blinkInterval = 500;
-        Serial.println(F("🔄 Normal blink (500ms)"));
-      } else if (command == "s") {
-        state.blinkInterval = 1000;
-        Serial.println(F("🐌 Slow blink (1000ms)"));
-      } else if (command == "status") {
-        showPractice1Status();
-      } else {
-        Serial.println(F("❌ Try: f, n, s, status, pause, salir"));
-      }
-      break;
-      
-    case 1: // Practice 2
-      if (command == "status") {
-        showPractice2Status();
-      } else {
-        Serial.println(F("❌ Try: status, pause, salir"));
-      }
-      break;
-      
-    case 2: // Practice 3
-      if (command == "center") {
-        state.targetServoPosition = 90;
-        Serial.println(F("🎯 Centering servo..."));
-      } else if (command == "test") {
-        practiceActive = false;
-        testServoRange();
-        practiceActive = true;
-      } else if (command == "status") {
-        showPractice3Status();
-      } else {
-        Serial.println(F("❌ Try: center, test, status, pause, salir"));
-      }
-      break;
-      
-    case 3: // Practice 4
-      if (command == "mode") {
-        state.colorMode = (state.colorMode + 1) % 3;
-        state.colorStep = 0;
-        Serial.print(F("🎨 Mode: "));
-        switch (state.colorMode) {
-          case 0: Serial.println(F("Rainbow")); break;
-          case 1: Serial.println(F("Breathing")); break;
-          case 2: Serial.println(F("Strobe")); break;
-        }
-      } else if (command == "faster") {
-        Serial.println(F("⚡ Faster animation"));
-      } else if (command == "slower") {
-        Serial.println(F("🐌 Slower animation"));
-      } else if (command == "status") {
-        showPractice4Status();
-      } else {
-        Serial.println(F("❌ Try: mode, faster, slower, status, pause, salir"));
-      }
-      break;
-      
-    case 4: // Practice 5
-      if (command == "clear") {
-        state.displayNumber = 0;
-        Serial.println(F("🧹 Display cleared"));
-      } else if (command == "zeros") {
-        state.showLeadingZeros = !state.showLeadingZeros;
-        Serial.print(F("0️⃣ Leading zeros: "));
-        Serial.println(state.showLeadingZeros ? F("ON") : F("OFF"));
-      } else if (command == "test") {
-        practiceActive = false;
-        testSevenSegmentDisplay();
-        practiceActive = true;
-      } else {
-        long number = command.toInt();
-        if ((number >= 0 && number <= MAX_DISPLAY_NUMBER) || command == "0") {
-          state.displayNumber = (int)number;
-          Serial.print(F("🔢 Showing: "));
-          Serial.println(state.displayNumber);
-        } else {
-          Serial.println(F("❌ Enter 0-9999, clear, zeros, test, pause, salir"));
-        }
-      }
-      break;
-  }
-}
-
-// ============================================
-// HELPER FUNCTIONS
-// ============================================
-// SECURE: RGB colors without floating point
-void updateRGBColors() {
-  int phase = state.colorStep % 360;
-  
-  switch (state.colorMode) {
-    case 0: // Rainbow - using integer math only
-      if (phase < 60) {
-        state.redValue = 255;
-        state.greenValue = map(phase, 0, 59, 0, 255);
-        state.blueValue = 0;
-      } else if (phase < 120) {
-        state.redValue = map(phase, 60, 119, 255, 0);
-        state.greenValue = 255;
-        state.blueValue = 0;
-      } else if (phase < 180) {
-        state.redValue = 0;
-        state.greenValue = 255;
-        state.blueValue = map(phase, 120, 179, 0, 255);
-      } else if (phase < 240) {
-        state.redValue = 0;
-        state.greenValue = map(phase, 180, 239, 255, 0);
-        state.blueValue = 255;
-      } else if (phase < 300) {
-        state.redValue = map(phase, 240, 299, 0, 255);
-        state.greenValue = 0;
-        state.blueValue = 255;
-      } else {
-        state.redValue = 255;
-        state.greenValue = 0;
-        state.blueValue = map(phase, 300, 359, 255, 0);
-      }
-      break;
-      
-    case 1: // Breathing - using lookup table
       {
-        int sineIndex = (state.colorStep * 2) % 256;
-        int brightness = pgm_read_byte(&sineTable[sineIndex]);
-        state.redValue = brightness;
-        state.greenValue = brightness;
-        state.blueValue = brightness;
-      }
-      break;
-      
-    case 2: // Strobe
-      {
-        int strobePhase = (state.colorStep / 20) % 8;
-        state.redValue = state.greenValue = state.blueValue = 0;
-        switch (strobePhase) {
-          case 0: state.redValue = 255; break;
-          case 1: state.greenValue = 255; break;
-          case 2: state.blueValue = 255; break;
-          case 3: state.redValue = state.greenValue = 255; break;
-          case 4: state.redValue = state.blueValue = 255; break;
-          case 5: state.greenValue = state.blueValue = 255; break;
-          case 6: state.redValue = state.greenValue = state.blueValue = 255; break;
+        int faseEstrobo = (estadoP4.pasoColor / 20) % 8;
+        estadoP4.valorRojo = estadoP4.valorVerde = estadoP4.valorAzul = 0;
+        switch (faseEstrobo) {
+          case 0: estadoP4.valorRojo = 255; break;
+          case 1: estadoP4.valorVerde = 255; break;
+          case 2: estadoP4.valorAzul = 255; break;
+          case 3: estadoP4.valorRojo = estadoP4.valorVerde = 255; break;
+          case 4: estadoP4.valorRojo = estadoP4.valorAzul = 255; break;
+          case 5: estadoP4.valorVerde = estadoP4.valorAzul = 255; break;
+          case 6: estadoP4.valorRojo = estadoP4.valorVerde = estadoP4.valorAzul = 255; break;
           case 7: break;
         }
       }
@@ -997,64 +820,214 @@ void updateRGBColors() {
   }
 }
 
-// SECURE: Fixed display multiplexing
-void updateSevenSegmentDisplay() {
-  // SECURE: Turn off segments FIRST, then digits
-  for (int pin = SHARED_D3; pin <= SHARED_D10; pin++) {
-    digitalWrite(pin, LOW);
+// ============================================
+// PRÁCTICA 5: DISPLAY DE 7 SEGMENTOS
+// ============================================
+void iniciarPractica5() {
+  estadoActual = PRACTICA_5;
+  practicaActiva = true;
+  
+  estadoP5.numeroDisplay = 1234;
+  estadoP5.digitoActual = 0;
+  estadoP5.ultimaActualizacionDisplay = 0;
+  estadoP5.mostrarCerosIzquierda = false;
+  
+  apagarTodasLasSalidas();
+  for (int i = 3; i <= 12; i++) {
+    pinMode(i, OUTPUT);
+    digitalWrite(i, LOW);
+  }
+  pinMode(SHARED_A0, OUTPUT);
+  pinMode(SHARED_A1, OUTPUT);
+  
+  mostrarInfoPractica5();
+  mostrarMenuPractica5();
+}
+
+void mostrarInfoPractica5() {
+  Serial.println();
+  Serial.println(F("========================================"));
+  Serial.println(F("     PRÁCTICA 5: DISPLAY 7 SEGMENTOS"));
+  Serial.println(F("========================================"));
+  Serial.println(F(""));
+  Serial.println(F("Configuración de Hardware:"));
+  Serial.println(F("- Display 7 segmentos de 4 dígitos"));
+  Serial.println(F("- Segmentos A-G,DP: D3-D10 -> 220ohm -> segmentos"));
+  Serial.println(F("- Control dígitos: D11,D12,A0,A1 -> 1kohm -> transistores"));
+  Serial.println(F("- Cableado complejo - consultar diagrama detallado"));
+  Serial.println(F(""));
+  Serial.println(F("Objetivos de Aprendizaje:"));
+  Serial.println(F("- Multiplexado de display"));
+  Serial.println(F("- Programación crítica de tiempo"));
+  Serial.println(F("- Patrones de números binarios"));
+  Serial.println(F("- Persistencia de la visión"));
+  Serial.println(F(""));
+}
+
+void mostrarMenuPractica5() {
+  Serial.println(F("---------- Comandos Práctica 5 ----------"));
+  Serial.println(F("establecer <numero> - Mostrar número (0-9999)"));
+  Serial.println(F("limpiar             - Limpiar display (mostrar 0000)"));
+  Serial.println(F("ceros               - Alternar ceros a la izquierda"));
+  Serial.println(F("probar              - Probar todos los segmentos"));
+  Serial.println(F("contar              - Contar de 0 a 9999"));
+  Serial.println(F("estado              - Mostrar configuración actual"));
+  Serial.println(F("ayuda               - Mostrar este menú"));
+  Serial.println(F("salir               - Volver al menú principal"));
+  Serial.println(F("------------------------------------------"));
+  Serial.println(F(""));
+  Serial.println(F("Mostrando actualmente: 1234"));
+  Serial.println(F(""));
+  Serial.print(F("Práctica 5> "));
+}
+
+void ejecutarPractica5() {
+  if (!practicaActiva) return;
+  
+  unsigned long tiempoActual = millis();
+  
+  if (tiempoActual - estadoP5.ultimaActualizacionDisplay >= 2) {
+    actualizarDisplaySieteSegmentos();
+    estadoP5.ultimaActualizacionDisplay = tiempoActual;
+  }
+}
+
+void manejarEntradaPractica5(String entrada) {
+  if (entrada == "salir") {
+    salirPracticaActual();
+    return;
+  } else if (entrada.startsWith("establecer ")) {
+    String cadenaNumero = entrada.substring(11);
+    int numero = cadenaNumero.toInt();
+    if (numero >= 0 && numero <= 9999 || cadenaNumero == "0") {
+      estadoP5.numeroDisplay = numero;
+      Serial.print(F("Display establecido a: "));
+      Serial.println(estadoP5.numeroDisplay);
+    } else {
+      Serial.println(F("Número inválido. Ingresa 0-9999"));
+    }
+  } else if (entrada == "limpiar") {
+    estadoP5.numeroDisplay = 0;
+    Serial.println(F("Display limpiado"));
+  } else if (entrada == "ceros") {
+    estadoP5.mostrarCerosIzquierda = !estadoP5.mostrarCerosIzquierda;
+    Serial.print(F("Ceros a la izquierda: "));
+    Serial.println(estadoP5.mostrarCerosIzquierda ? F("ACTIVADO") : F("DESACTIVADO"));
+  } else if (entrada == "probar") {
+    probarDisplaySieteSegmentos();
+  } else if (entrada == "contar") {
+    contarDisplay();
+  } else if (entrada == "estado") {
+    mostrarEstadoPractica5();
+  } else if (entrada == "ayuda") {
+    mostrarMenuPractica5();
+    return;
+  } else {
+    Serial.println(F("Comando desconocido. Escribe 'ayuda' para comandos disponibles."));
   }
   
-  // Then turn off all digits
+  Serial.print(F("Práctica 5> "));
+}
+
+void mostrarEstadoPractica5() {
+  Serial.println();
+  Serial.println(F("--- Estado Práctica 5 ---"));
+  Serial.print(F("Número actual: "));
+  Serial.println(estadoP5.numeroDisplay);
+  Serial.print(F("Ceros a la izquierda: "));
+  Serial.println(estadoP5.mostrarCerosIzquierda ? F("ACTIVADO") : F("DESACTIVADO"));
+  Serial.print(F("Dígito actual siendo refrescado: "));
+  Serial.println(estadoP5.digitoActual);
+  Serial.println(F("-------------------------"));
+}
+
+void probarDisplaySieteSegmentos() {
+  Serial.println();
+  Serial.println(F("Probando display de 7 segmentos..."));
+  
+  for (int i = 0; i <= 9; i++) {
+    estadoP5.numeroDisplay = i * 1111;
+    Serial.print(F("Mostrando: "));
+    Serial.println(estadoP5.numeroDisplay);
+    delay(1000);
+  }
+  
+  estadoP5.numeroDisplay = 1234;
+  Serial.println(F("Prueba completada - restaurado a 1234"));
+}
+
+void contarDisplay() {
+  Serial.println();
+  Serial.println(F("Contando de 0 a 9999 (presiona cualquier tecla para detener)..."));
+  
+  for (int i = 0; i <= 9999; i++) {
+    estadoP5.numeroDisplay = i;
+    
+    unsigned long tiempoInicio = millis();
+    while (millis() - tiempoInicio < 100) {
+      if (millis() - estadoP5.ultimaActualizacionDisplay >= 2) {
+        actualizarDisplaySieteSegmentos();
+        estadoP5.ultimaActualizacionDisplay = millis();
+      }
+      
+      if (Serial.available()) {
+        while (Serial.available()) Serial.read();
+        Serial.println();
+        Serial.println(F("Conteo detenido por el usuario"));
+        return;
+      }
+    }
+  }
+  
+  Serial.println();
+  Serial.println(F("Conteo completado"));
+}
+
+void actualizarDisplaySieteSegmentos() {
   digitalWrite(SHARED_D11, LOW);
   digitalWrite(SHARED_D12, LOW);
   digitalWrite(SHARED_A0, LOW);
   digitalWrite(SHARED_A1, LOW);
   
-  // Extract digits with bounds checking
-  int displayNum = constrain(state.displayNumber, 0, MAX_DISPLAY_NUMBER);
-  int thousands = (displayNum / 1000) % 10;
-  int hundreds = (displayNum / 100) % 10;
-  int tens = (displayNum / 10) % 10;
-  int units = displayNum % 10;
+  int miles = (estadoP5.numeroDisplay / 1000) % 10;
+  int centenas = (estadoP5.numeroDisplay / 100) % 10;
+  int decenas = (estadoP5.numeroDisplay / 10) % 10;
+  int unidades = estadoP5.numeroDisplay % 10;
   
-  int digitValue;
-  bool showDigit = true;
+  int valorDigito;
+  bool mostrarDigito = true;
   
-  switch (state.currentDigit) {
+  switch (estadoP5.digitoActual) {
     case 0:
-      digitValue = thousands;
-      showDigit = state.showLeadingZeros || thousands > 0 || displayNum >= 1000;
+      valorDigito = miles;
+      mostrarDigito = estadoP5.mostrarCerosIzquierda || miles > 0 || estadoP5.numeroDisplay >= 1000;
       break;
     case 1:
-      digitValue = hundreds;
-      showDigit = state.showLeadingZeros || hundreds > 0 || displayNum >= 100;
+      valorDigito = centenas;
+      mostrarDigito = estadoP5.mostrarCerosIzquierda || centenas > 0 || estadoP5.numeroDisplay >= 100;
       break;
     case 2:
-      digitValue = tens;
-      showDigit = state.showLeadingZeros || tens > 0 || displayNum >= 10;
+      valorDigito = decenas;
+      mostrarDigito = estadoP5.mostrarCerosIzquierda || decenas > 0 || estadoP5.numeroDisplay >= 10;
       break;
     case 3:
-      digitValue = units;
+      valorDigito = unidades;
       break;
-    default:
-      return; // Invalid digit
   }
   
-  if (showDigit && digitValue >= 0 && digitValue <= 9) {
-    byte pattern = pgm_read_byte(&digitPatterns[digitValue]);
+  if (mostrarDigito) {
+    byte patron = pgm_read_byte(&patronesDigitos[valorDigito]);
     
-    // Set segments
-    digitalWrite(SHARED_D3, (pattern >> 7) & 1);
-    digitalWrite(SHARED_D4, (pattern >> 6) & 1);
-    digitalWrite(SHARED_D5, (pattern >> 5) & 1);
-    digitalWrite(SHARED_D6, (pattern >> 4) & 1);
-    digitalWrite(SHARED_D7, (pattern >> 3) & 1);
-    digitalWrite(SHARED_D8, (pattern >> 2) & 1);
-    digitalWrite(SHARED_D9, (pattern >> 1) & 1);
-    digitalWrite(SHARED_D10, pattern & 1);
+    digitalWrite(SHARED_D3, (patron >> 7) & 1);
+    digitalWrite(SHARED_D4, (patron >> 6) & 1);
+    digitalWrite(SHARED_D5, (patron >> 5) & 1);
+    digitalWrite(SHARED_D6, (patron >> 4) & 1);
+    digitalWrite(SHARED_D7, (patron >> 3) & 1);
+    digitalWrite(SHARED_D8, (patron >> 2) & 1);
+    digitalWrite(SHARED_D9, (patron >> 1) & 1);
+    digitalWrite(SHARED_D10, patron & 1);
     
-    // Turn on current digit
-    switch (state.currentDigit) {
+    switch (estadoP5.digitoActual) {
       case 0: digitalWrite(SHARED_D11, HIGH); break;
       case 1: digitalWrite(SHARED_D12, HIGH); break;
       case 2: digitalWrite(SHARED_A0, HIGH); break;
@@ -1062,108 +1035,71 @@ void updateSevenSegmentDisplay() {
     }
   }
   
-  state.currentDigit = (state.currentDigit + 1) % 4;
-}
-
-void updateStatusLED() {
-  int interval = 200 + (currentPractice * 200);
-  digitalWrite(STATUS_LED, (millis() / interval) % 2);
+  estadoP5.digitoActual = (estadoP5.digitoActual + 1) % 4;
 }
 
 // ============================================
-// STATUS FUNCTIONS
+// FUNCIONES DE UTILIDAD
 // ============================================
-void showPractice1Status() {
-  Serial.println(F("📊 Status: Red LED blink interval: "));
-  Serial.print(state.blinkInterval);
-  Serial.println(F("ms"));
-}
-
-void showPractice2Status() {
-  int potValue = analogRead(POTENTIOMETER);
-  Serial.print(F("📊 Pot: "));
-  Serial.print(potValue);
-  Serial.print(F(" PWM: "));
-  Serial.println(state.brightness);
-}
-
-void showPractice3Status() {
-  Serial.print(F("📊 LED: "));
-  Serial.print(state.brightness);
-  Serial.print(F(" Servo: "));
-  Serial.print(state.servoPosition);
-  Serial.println(F("°"));
-}
-
-void showPractice4Status() {
-  Serial.print(F("📊 Mode: "));
-  switch (state.colorMode) {
-    case 0: Serial.print(F("Rainbow")); break;
-    case 1: Serial.print(F("Breathing")); break;
-    case 2: Serial.print(F("Strobe")); break;
-  }
-  Serial.print(F(" RGB: ("));
-  Serial.print(state.redValue);
-  Serial.print(F(","));
-  Serial.print(state.greenValue);
-  Serial.print(F(","));
-  Serial.print(state.blueValue);
-  Serial.println(F(")"));
-}
-
-void testServoRange() {
-  Serial.println(F("🧪 Testing servo range..."));
-  for (int pos = state.servoPosition; pos >= 0; pos--) {
-    myServo.write(pos);
-    delay(15);
-  }
-  delay(1000);
-  
-  for (int pos = 0; pos <= 180; pos++) {
-    myServo.write(pos);
-    delay(15);
-  }
-  delay(1000);
-  
-  for (int pos = 180; pos >= 90; pos--) {
-    myServo.write(pos);
-    delay(15);
-  }
-  
-  state.servoPosition = 90;
-  state.targetServoPosition = 90;
-  Serial.println(F("✅ Test complete"));
-}
-
-void testSevenSegmentDisplay() {
-  Serial.println(F("🧪 Testing display..."));
-  for (int i = 0; i <= 9; i++) {
-    state.displayNumber = i * 1111;
-    Serial.print(F("Showing: "));
-    Serial.println(state.displayNumber);
-    delay(1000);
-  }
-  state.displayNumber = 1234;
-  Serial.println(F("✅ Test complete"));
-}
-
-void showSystemInfo() {
+void salirPracticaActual() {
   Serial.println();
-  Serial.println(F("═══════════════ SYSTEM INFO ═══════════════"));
-  Serial.println(F("🔧 Arduino Nano (ATmega328P)"));
-  Serial.println(F("⚡ 16 MHz, 32KB Flash, 2KB RAM"));
-  Serial.print(F("⏱️ Uptime: "));
+  Serial.println(F("Saliendo de la práctica actual..."));
+  
+  apagarTodasLasSalidas();
+  
+  if (miServo.attached()) {
+    miServo.detach();
+  }
+  
+  estadoActual = MENU_PRINCIPAL;
+  practicaActiva = false;
+  
+  Serial.println(F("Regresado al menú principal"));
+  mostrarMenuPrincipal();
+}
+
+void apagarTodasLasSalidas() {
+  for (int pin = 3; pin <= 12; pin++) {
+    digitalWrite(pin, LOW);
+  }
+  digitalWrite(A0, LOW);
+  digitalWrite(A1, LOW);
+}
+
+void actualizarLedEstado() {
+  int intervalo;
+  switch (estadoActual) {
+    case MENU_PRINCIPAL: intervalo = 1000; break;
+    case PRACTICA_1: intervalo = 200; break;
+    case PRACTICA_2: intervalo = 400; break;
+    case PRACTICA_3: intervalo = 600; break;
+    case PRACTICA_4: intervalo = 800; break;
+    case PRACTICA_5: intervalo = 100; break;
+  }
+  
+  digitalWrite(LED_ESTADO, (millis() / intervalo) % 2);
+}
+
+void mostrarInfoSistema() {
+  Serial.println();
+  Serial.println(F("========== INFORMACIÓN DEL SISTEMA =========="));
+  Serial.println(F("Hardware: Arduino Nano (ATmega328P)"));
+  Serial.println(F("Velocidad de reloj: 16 MHz"));
+  Serial.println(F("Memoria Flash: 32 KB"));
+  Serial.println(F("SRAM: 2 KB"));
+  Serial.println(F("EEPROM: 1 KB"));
+  Serial.println();
+  Serial.print(F("Tiempo de funcionamiento: "));
   Serial.print(millis() / 1000);
-  Serial.println(F(" seconds"));
-  Serial.print(F("🆓 Free RAM: "));
-  Serial.print(getFreeRAM());
+  Serial.println(F(" segundos"));
+  Serial.print(F("RAM libre: "));
+  Serial.print(obtenerRAMLibre());
   Serial.println(F(" bytes"));
-  Serial.println(F("═══════════════════════════════════════════"));
+  Serial.println(F("============================================="));
   Serial.println();
-  Serial.print(F("Selection: "));
 }
 
-int getFreeRAM() {
+int obtenerRAMLibre() {
   extern int __heap_start, *__brkval;
   int v;
   return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval);
