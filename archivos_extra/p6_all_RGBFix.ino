@@ -16,9 +16,9 @@ const int POTENCIOMETRO = A2, LED_ESTADO = 13;
 // ============================================
 // MAPEO DE PINES RGB - CORREGIDO
 // ============================================
-const int PIN_RGB_ROJO = SHARED_D9;    // Pin para canal rojo
+const int PIN_RGB_ROJO = SHARED_D11;    // Pin para canal rojo
 const int PIN_RGB_VERDE = SHARED_D10;  // Pin para canal verde
-const int PIN_RGB_AZUL = SHARED_D11;   // Pin para canal azul
+const int PIN_RGB_AZUL = SHARED_D09;   // Pin para canal azul
 
 // ============================================
 // CONSTANTES
