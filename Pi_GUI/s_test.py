@@ -7,7 +7,7 @@ import time
 def pto_arduino():
     puerto = serial.tools.list_ports.comports()
     for pto in puerto:
-        if "Arduino" in pto.description or "CH340" or "ttyACM0" in pto.description:
+        if "Arduino" in pto.description or "CH340" in pto.description or "USB Serial" in pto.description or "ttyACM0" in pto.description:
             return pto.device
     return None
 
@@ -28,8 +28,12 @@ def arduino_escribe(mensaje, arduino):
     arduino.write(mensaje)
 
 def arduino_leer(arduino):
-    mensaje=arduino.readline().decode('utf-8')
-    return mensaje
+    try:
+        mensaje=arduino.read(arduino.in_waiting).decode('utf-8', errors='ignore').strip()
+        return mensaje
+    except serial.SerialException as e:
+        mensaje="Conexion perdida"
+        return mensaje
 
 def arduino_inter(mensaje, arduino):
     mensaje=mensaje.encode('utf-8')

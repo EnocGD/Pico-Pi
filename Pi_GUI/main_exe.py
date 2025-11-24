@@ -7,6 +7,7 @@ import fitz
 from PIL import Image, ImageTk
 import pandas as pd
 import openpyxl
+import s_test
 
 import pico_funciones as pico
 
@@ -158,10 +159,9 @@ def practicar(modulo):
     global mod_info
     mod_info={}
     serial_t=None
-    print("avel")
-    print(modulo)
     if modulo!=0:
         try:
+            modulo = mods_listos[modulo-1]
             xl_file=pd.ExcelFile('directorio.xlsx')
             tipos=pd.read_excel(xl_file, sheet_name=modulo).iloc[0]["Tipo de puertos"]
             nombre_ptos=pd.read_excel(xl_file,sheet_name=modulo).iloc[0]["Nombre de puertos"]
@@ -179,6 +179,7 @@ def practicar(modulo):
             else:'''
             if vtn_tabla_mod==None:
                 leer_mod(mod_info)
+                print(modulo)
             '''if vtn_pdf==None:
                 leer_pdf(modulo, 0)'''
         except:
@@ -233,8 +234,8 @@ def leer_mod(mod_info):
     actualizar_tabla()
     btn_pdf.place(relx=0.2, rely=0.8, anchor='center')
     btn_instru.place(relx=0.5, rely=0.8, anchor='center')
-    if mod_info['tipos'][0]=='Serie':
-        btn_serial=tk.Button(vtn_tabla_mod, text="Monitor", command=serial_terminal)
+    if mod_info['tipos'][-1]=='SERIE':
+        btn_serial=tk.Button(vtn_tabla_mod, text="Monitor", command=serial_terminal_practica)
         btn_serial.place(relx=0.8, rely=0.8, anchor='center')
     tabla.pack()
     print(index_item)
@@ -282,15 +283,15 @@ def act_mods(mods):
             time.sleep(1)
             funciones.enviar_comando(str(elements).encode('utf-8'))
             if elements==p1:
-                mods_listos[0]=(funciones.recibir_lectura_nb().decode('utf-8', errors='ignore')).split("\xff")[0]
+                mods_listos[0]=(funciones.recibir_lectura_nb().decode('utf-8', errors='ignore')).split("\xff")[0].strip()
             elif elements==p2:
-                mods_listos[1] = (funciones.recibir_lectura_nb().decode('utf-8', errors='ignore')).split("\xff")[0]
+                mods_listos[1] = (funciones.recibir_lectura_nb().decode('utf-8', errors='ignore')).split("\xff")[0].strip()
             elif elements==p3:
-                mods_listos[2] = (funciones.recibir_lectura_nb().decode('utf-8', errors='ignore')).split("\xff")[0]
+                mods_listos[2] = (funciones.recibir_lectura_nb().decode('utf-8', errors='ignore')).split("\xff")[0].strip()
             elif elements==p4:
-                mods_listos[3] = (funciones.recibir_lectura_nb().decode('utf-8', errors='ignore')).split("\xff")[0]
+                mods_listos[3] = (funciones.recibir_lectura_nb().decode('utf-8', errors='ignore')).split("\xff")[0].strip()
             else:
-                mods_listos.append((funciones.recibir_lectura_nb()).decode('utf-8', errors='ignore')).split("\xff")[0]
+                mods_listos.append((funciones.recibir_lectura_nb()).decode('utf-8', errors='ignore')).split("\xff")[0].strip()
             time.sleep(1)
     elif mods=="Esperando":
         lbl_buscar.config(text="Conectando...")
@@ -745,37 +746,135 @@ def doc_atras():
     print("Atras")
 
 ######################################################################################################3
-def serial_terminal():
+def serial_terminal_practica():
     def enviar():
+        global comandos
+
         mensaje=cb_practicas.get()
+        match mensaje:
+            case '1':
+                comandos=['rapido', 'normal', 'lento', 'estado', 'ayuda', 'salir']
+
+            case '2':
+                #Imprimir mensaje de terminal
+                comandos=['estado', 'ayuda', 'salir']
+            case '3':
+                #Imprimir desde terminal
+                comandos=['centrar', 'probar', 'estado', 'ayuda', 'salir']
+            case '4':
+                #Imprimir desde terminal
+                comandos=['modo', 'rojo', 'verde', 'azul', 'blanco', 'apagar', 'probar', 'estado',
+                          'ayuda', 'salir']
+            case '5':
+                comandos=['establecer 14', 'limpiar', 'ceros', 'probar', 'contar', 'diagnostico',
+                          'estado', 'ayuda', 'salir']
+            case 'salir':
+                comandos=['1', '2', '3', '4', '5', 'info']
+            case 'info':
+                comandos=['1', '2', '3', '4', '5', 'info']
+            case _:
+                comandos=comandos
         mensaje=mensaje+'\n'
         serial_caja.insert(tk.END, mensaje)
-        match mensaje:
-            case 'P1':
-                comandos=["Cambiar practica"]
-            case 'P2':
-                #Imprimir mensaje de terminal
-                comandos=['c', 's', 'r', "Cambiar practica"]
-            case 'P3':
-                #Imprimir desde terminal
-                comandos=['d', 's', 'c', 't', "Cambiar practica"]
-            case 'P4':
-                #Imprimir desde terminal
-                comandos=['s', '+', '-']
-            case _:
-                print("Nada")
+        s_test.arduino_escribe(mensaje, arduino)
+        cb_practicas['values']=comandos
+        cb_practicas.set('Elige una opcion...')
 
-    practicas=['P1', 'P2', 'P3', 'P4', 'P5']
+
+    def act_terminal(arduino):
+        mensaje=s_test.arduino_leer(arduino)
+        if mensaje:
+            serial_caja.insert(tk.END, f"{mensaje}\n")
+            serial_caja.see(tk.END)
+        serial_caja.after(100, act_terminal,arduino)
+
+    def ciclo_opciones(event):
+        print("Lo presionaste")
+        cb=event.widget
+        current_index=cb_practicas.current()
+        list_size=len(cb['values'])
+        if current_index== (list_size - 1):
+            cb_practicas.current(0)
+        else:
+            cb_practicas.current(current_index+1)
+
+        return "break"
+    practicas=['1', '2', '3', '4', '5', 'info']
+    global comandos
+    comandos=[]
     vtn_serial=tk.Toplevel(vtn_menu)
     vtn_serial.geometry(pi_window_size)
     vtn_serial.title("Monitor serial")
     vtn_serial.resizable(False, False)
     vtn_serial.config(bg='black')
+    arduino=s_test.config_terminal()
+
+    serial_caja = tk.Text(vtn_serial, width=55, height=15, takefocus=0)
+    cb_practicas=ttk.Combobox(vtn_serial, values=practicas)
+    cb_practicas.set("Elige una practica...")
+    cb_practicas.bind('<Down>', ciclo_opciones)
+    btn_enviar=tk.Button(vtn_serial,text="->", command=enviar)
+    act_terminal(arduino)
+    serial_caja.pack()
+    cb_practicas.pack()
+    btn_enviar.pack(after=cb_practicas)
+
+
+def serial_terminal():
+    def enviar():
+        global comandos
+
+        mensaje=cb_practicas.get()
+        match mensaje:
+            case '1':
+                comandos=['rapido', 'normal', 'lento', 'estado', 'ayuda', 'salir']
+
+            case '2':
+                #Imprimir mensaje de terminal
+                comandos=['estado', 'ayuda', 'salir']
+            case '3':
+                #Imprimir desde terminal
+                comandos=['centrar', 'probar', 'estado', 'ayuda', 'salir']
+            case '4':
+                #Imprimir desde terminal
+                comandos=['modo', 'rojo', 'verde', 'azul', 'blanco', 'apagar', 'probar', 'estado',
+                          'ayuda', 'salir']
+            case '5':
+                comandos=['establecer 14', 'limpiar', 'ceros', 'probar', 'contar', 'diagnostico',
+                          'estado', 'ayuda', 'salir']
+            case 'salir':
+                comandos=['1', '2', '3', '4', '5', 'info']
+            case _:
+                comandos=comandos
+        mensaje=mensaje+'\n'
+        serial_caja.insert(tk.END, mensaje)
+        s_test.arduino_escribe(mensaje, arduino)
+        cb_practicas['values']=comandos
+        cb_practicas.set('Elige una opcion...')
+
+
+    def act_terminal(arduino):
+        mensaje=s_test.arduino_leer(arduino)
+        if mensaje:
+            serial_caja.insert(tk.END, f"{mensaje}\n")
+            serial_caja.see(tk.END)
+        serial_caja.after(100, act_terminal,arduino)
+
+    practicas=['1', '2', '3', '4', '5', 'info']
+    global comandos
+    comandos=[]
+    vtn_serial=tk.Toplevel(vtn_menu)
+    vtn_serial.geometry(pi_window_size)
+    vtn_serial.title("Monitor serial")
+    vtn_serial.resizable(False, False)
+    vtn_serial.config(bg='black')
+    arduino=s_test.config_terminal()
 
     serial_caja = tk.Text(vtn_serial, width=55, height=15)
     cb_practicas=ttk.Combobox(vtn_serial, values=practicas)
     cb_practicas.set("Elige una practica...")
     btn_enviar=tk.Button(vtn_serial,text="->", command=enviar)
+    act_terminal(arduino)
     serial_caja.pack()
     cb_practicas.pack()
     btn_enviar.pack(after=cb_practicas)
