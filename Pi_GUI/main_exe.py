@@ -8,9 +8,7 @@ from PIL import Image, ImageTk
 import pandas as pd
 import openpyxl
 import s_test
-
 import pico_funciones as pico
-
 import funciones
 vtn_pdf=None
 vtn_tabla_mod=None
