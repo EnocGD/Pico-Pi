@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import ast
 import tkinter as tk
 import time
@@ -12,6 +13,10 @@ import pico_funciones as pico
 import funciones
 vtn_pdf=None
 vtn_tabla_mod=None
+vtn_menu=None
+vtn_instru_menu=None
+vtn_multi=None
+gen_vtn=None
 ###Variables
 global tema
 multimetro_lect=0
@@ -416,11 +421,13 @@ def crear_ref():
 def instru():
     print("Dr profesor patricio")
     global vtn_instru_menu
+    vtn_menu.withdraw()
     ###Creacion de ventana de menu instru
     vtn_instru_menu= tk.Toplevel(vtn_menu)
-    vtn_instru_menu.geometry(pi_window_size)
     vtn_instru_menu.title("Menu de instrumentacion")
+    vtn_instru_menu.geometry(pi_window_size)
     vtn_instru_menu.resizable(False, False)
+    vtn_instru_menu.update_idletasks()
     vtn_instru_menu.attributes('-fullscreen', True)
     vtn_instru_menu.focus_set()
     ###Imagenes
@@ -467,6 +474,7 @@ def instru():
 ##############################################################################################################
 ###Multimetro
 def multimetro():
+    vtn_instru_menu.withdraw()
     print("Hola aqui va el multimetro")
     global lbl_lectura
     global var
@@ -474,6 +482,7 @@ def multimetro():
     vtn_multi.geometry(pi_window_size)
     vtn_multi.title("Multimetro")
     vtn_multi.resizable(False, False)
+    vtn_multi.update_idletasks()
     vtn_multi.attributes('-fullscreen', True)
     vtn_multi.focus_set()
     var=IntVar()
@@ -560,6 +569,7 @@ def osciloscopio():
 ##############################################################################################################
 ###Generador de funciones
 def generador():
+    vtn_instru_menu.withdraw()
     ###La amplitud no se puede controlar
     global lbl_generador
     global frec_gen
@@ -571,6 +581,7 @@ def generador():
     gen_vtn.geometry(pi_window_size)
     gen_vtn.title("Calibre 50")
     gen_vtn.resizable(False, False)
+    gen_vtn.update_idletasks()
     gen_vtn.attributes('-fullscreen', True)
     gen_vtn.focus_set()
     ###Iconos
@@ -958,9 +969,10 @@ def crear_main_vtn():
     global vtn_menu
     vtn_menu=tk.Toplevel(main_vtn)
     vtn_menu.title("Menu principal")
-    vtn_menu.attributes('-fullscreen', True)
     vtn_menu.geometry(pi_window_size)
     vtn_menu.resizable(False, False)
+    vtn_menu.update_idletasks()
+    vtn_menu.attributes('-fullscreen', True)
 
     vtn_menu.focus_set()
     ##Imagenes

@@ -1,54 +1,38 @@
-import serial.tools.list_ports
+import serial
+import time
 
 def serial_init():
-    print("Serial inicializado")
-
+    ser= serial.Serial('/dev/serial0', 9600, timeout=1)
+    return ser
+    
 def enviar_comando(comando):
-    serial_init()
-    print(comando)
+    ser=serial_init()
+    ser.write(comando)
+    ser.close()
 
 def recibir_lectura():
-    print("leer")
-    dato=[80, 88]
-    return dato
-
+	ser=serial_init()
+	while True:
+		print("Hola")
+		if ser.in_waiting > 0:
+			data = ser.readline().decode('utf-8')
+			if data:
+				print("Recibido:", data)
+				break
+		time.sleep(0.05)
+	ser.close()
+	return data
+	
 def recibir_lectura_nb():
-
-    print("lectura sin deco")
-    return b'bola'
-
-def config_terminal():
-    while True:
-        puerto = pto_arduino()
-        if puerto:
-            print(f"Arduino en puerto {puerto}")
-            break
-        else:
-            print("Aun no lo encuentro")
-            time.sleep(5)
-    ser_device= serial.Serial(puerto, 9600, timeout=1)
-    time.sleep(2)
-    return ser_device
-def arduino_escribe(mensaje, arduino):
-    mensaje=mensaje.encode('utf-8')
-    arduino.write(mensaje)
-
-def arduino_leer(arduino):
-    mensaje=arduino.readline().decode('utf-8')
-    return mensaje
-
-def arduino_inter(mensaje, arduino):
-    mensaje=mensaje.encode('utf-8')
-    arduino.write(mensaje)
-    respuesta=arduino.readline().decode('utf-8')
-    return respuesta
-def arduino_play():
-    arduino=config_terminal()
-    while True:
-        respuesta= arduino.readline().decode()
-        print(f"Arduino dice {respuesta}")
-        yo=input("Di algo")
-        yo=yo.encode('utf-8')
-        arduino.write(yo)
-    arduino.close()
-
+	ser=serial_init()
+	while True:
+		print("Hola")
+		if ser.in_waiting > 0:
+			data = ser.readline()
+			if data:
+				print("Recibido:", data)
+				break
+		time.sleep(0.05)
+	ser.close()
+	return data
+		
