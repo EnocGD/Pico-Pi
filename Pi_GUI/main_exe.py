@@ -429,7 +429,7 @@ def instru():
                        font=("Arial", 12),
                        width=440, height=70)
     lbl_menu=tk.Label(vtn_instru_menu,
-                      text="Gestiona",
+                      text="Elige un instrumento",
                       font=("Arial", 14))
     ###Añadir iconos
     btn_multi.config(image=multi_icon,
@@ -502,6 +502,8 @@ def multimetro():
 ###Selector de opciones del multimetro
 def multi_lectura(boton):
     global multimetro_lect
+    global btn_anterior
+    btn_anterior=4
     funciones.enviar_comando(b'metter')
     time.sleep(1)
     if multimetro_lect==0:
@@ -510,6 +512,11 @@ def multi_lectura(boton):
         funciones.enviar_comando(b'r')
         time.sleep(0.5)
         multimetro_lect=1
+    if btn_anterior== boton:
+        print("No")
+    else:
+        lbl_lectura.config(text="Cargando...")
+        btn_anterior=boton
     if boton==1:
         funciones.enviar_comando(b'v')
         time.sleep(0.1)
@@ -532,7 +539,7 @@ def multi_lectura(boton):
         funciones.enviar_comando(b'c')
     else:
         lbl_lectura.config(text="Elige que medir")
-    lbl_lectura.after(500, multi_lectura, var.get())
+    lbl_lectura.after(100, multi_lectura, var.get())
 ##############################################################################################################
 ###Informacion del osciloscopio, probablemente se elimine y se use la ventana de pdf
 def osciloscopio():
@@ -602,9 +609,9 @@ def generador():
         btn_apagar_gen.config(image=on_off, compound=tk.LEFT)
         btn_subir.config(image=flecha_arriba, compound=tk.TOP)
         btn_bajar.config(image=flecha_abajo, compound=tk.TOP)
-        btn_sin_sel.config(width=10, image=sin, compound=tk.LEFT)
-        btn_sqr_sel.config(width=10, image=quad, compound=tk.LEFT)
-        btn_tri_sel.config(width=10, image=quad, compound=tk.LEFT)
+        btn_sin_sel.config(image=sin, compound=tk.LEFT)
+        btn_sqr_sel.config(image=quad, compound=tk.LEFT)
+        btn_tri_sel.config(image=tri, compound=tk.LEFT)
         frec_gen=1000
         signal="Senoidal"
         ##Poner widgets
@@ -616,12 +623,12 @@ def generador():
         #btn_bajar.grid(column=3, row=35, columnspan=2)
         lbl_generador.place(relx=0.45, rely=0.1, anchor='center')
         btn_apagar_gen.place(relx=0.1, rely=0.1, anchor='center')
-        lbl_frecuencia_UD.place(relx=0.2, rely=0.3, anchor='center')
+        lbl_frecuencia_UD.place(relx=0.35, rely=0.3, anchor='center')
         btn_subir.place(relx=0.6, rely=0.3, anchor='center')
         btn_bajar.place(relx=0.65, rely=0.3, anchor='center')
-        btn_sqr_sel.place(relx=0.45, rely=0.5, anchor='center')
-        btn_sin_sel.place(relx=0.45, rely=0.7, anchor='center')
-        btn_tri_sel.place(relx=0.45, rely=0.9, anchor='center')
+        btn_sqr_sel.place(relx=0.2, rely=0.5, anchor='w')
+        btn_sin_sel.place(relx=0.2, rely=0.7, anchor='w')
+        btn_tri_sel.place(relx=0.2, rely=0.9, anchor='w')
         btn_multi.place(relx=0.95, rely=0.1, anchor="ne")
         btn_osc.place(relx=0.95, rely=0.2, anchor="ne")
         btn_docs.place(relx=0.95, rely=0.3, anchor="ne")
