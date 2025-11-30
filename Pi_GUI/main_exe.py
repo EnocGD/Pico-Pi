@@ -997,10 +997,10 @@ def crear_main_vtn():
 
     vtn_menu.focus_set()
     ##Imagenes
-    ajalas_icon = tk.PhotoImage(file="ajalas.png")
-    docs_icon= tk.PhotoImage(file="docs.png")
-    aprender_icon= tk.PhotoImage(file="aprender.png")
-    instru_icon=tk.PhotoImage(file="medicion.png")
+    ajalas_icon = tk.PhotoImage(file="base-de-datos.png")
+    docs_icon= tk.PhotoImage(file="archivo.png")
+    aprender_icon= tk.PhotoImage(file="aprendiendo.png")
+    instru_icon=tk.PhotoImage(file="voltimetro.png")
     ##Widgets
     btn_aprender=tk.Button(vtn_menu,
                        text="Aprendamos",
