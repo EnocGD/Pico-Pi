@@ -11,12 +11,24 @@ import openpyxl
 import s_test
 import pico_funciones as pico
 import funciones
+import pxl
+from pxl import xl_name
+
+tele_pico=None
 vtn_pdf=None
 vtn_tabla_mod=None
 vtn_menu=None
 vtn_instru_menu=None
 vtn_multi=None
 gen_vtn=None
+vtn_lect_mods=None
+vtn_tabla_mod=None
+vtn_mods=None
+vtn_serial=None
+vtn_modsq=None
+
+generador=None
+modulo=0
 ###Variables
 global tema
 multimetro_lect=0
@@ -28,9 +40,9 @@ indice_temas_txt="Temas.txt"
 mods_listos=["Vacio", "Vacio", "Vacio", "Vacio"]
 mem_val={"Tipo":0x0000, "Nombre":0x0040, "Puertos":0x0080}
 p1=80
-p2=88
-p3=96
-p4=104
+p2=81
+p4=82
+p3=83
 mod_info={}
 tabla_ref={}
 pi_window_size="480x320+0+0"
@@ -50,17 +62,31 @@ pi_window_size="480x320+0+0"
 |  |      |  '--'  ||  |                                        
 | _|      |_______/ |__|                                        
 """
+
+def cierre_apertura(ventana_actual, ventana_anterior):
+    ventana_actual.destroy()
+    ventana_anterior.deiconify()
 def leer_pdf(ruta,pagina):
     ###Vtn de lector
+    def cerrar_pdf():
+        global vtn_pdf
+        if vtn_instru_menu==None:
+            cierre_apertura(vtn_pdf,vtn_tabla_mod)
+        else:
+            cierre_apertura(vtn_pdf, vtn_instru_menu)
+        vtn_pdf=None
     global vtn_pdf
     global lbl_pdf
+    vtn_menu.withdraw()
     vtn_pdf=tk.Toplevel(vtn_menu)
     vtn_pdf.geometry(pi_window_size)
     vtn_pdf.title("Lector PDF by CTM")
-    vtn_pdf.attributes('-fullscreen', True)
     vtn_pdf.focus_set()
     vtn_pdf.resizable(False, False)
     vtn_pdf.config(bg="black")
+    vtn_pdf.update_idletasks()
+    vtn_pdf.attributes('-fullscreen', True)
+    vtn_pdf.protocol("WM_DELETE_WINDOW", cerrar_pdf)
     ###Primera hoja
     img_tk = ImageTk.PhotoImage(pdf2img("DummyPracticePPTX.pdf", 0))
     lbl_pdf = tk.Label(vtn_pdf, image=img_tk)
@@ -71,6 +97,7 @@ def leer_pdf(ruta,pagina):
     ###Posicionamiento de botones
     btn_atras.place(relx=0.2, rely=0.9, anchor="center")
     btn_adelante.place(relx=0.8, rely=0.9, anchor="center")
+    btn_atras.focus_set()
     lbl_pdf.pack()
 ##############################################################################################################
 ###Botones PDF
@@ -111,14 +138,15 @@ def pdf2img(ruta, pag):
 ##############################################################################################################
 ###Lector de modulos
 def menu_aprender():
+    vtn_menu.withdraw()
     global lbl_buscar
     global mods_listos
     global vtn_lect_mods
-
     vtn_lect_mods=tk.Toplevel(vtn_menu)
     vtn_lect_mods.geometry(pi_window_size)
     vtn_lect_mods.title("Leyendo modulongos")
     vtn_lect_mods.resizable(False, False)
+    vtn_lect_mods.update_idletasks()
     vtn_lect_mods.attributes('-fullscreen', True)
     vtn_lect_mods.focus_set()
     ###vtn_menu.withdraw()
@@ -130,16 +158,26 @@ def menu_aprender():
 ##############################################################################################################
 ###Cuadricula con modulos
 def aprender_quad():
+    def quad_cierre():
+        global vtn_lect_mods
+        global vtn_modsq
+        cierre_apertura(vtn_modsq,vtn_menu)
+        vtn_lect_mods.destroy()
+        vtn_lect_mods=None
+        vtn_modsq=None
     global vtn_modsq
     global quad_mod
+    vtn_lect_mods.withdraw()
     quad_mod=IntVar()
     vtn_modsq=tk.Toplevel(vtn_menu)
     #vtn_lect_mods.destroy()
     vtn_modsq.geometry(pi_window_size)
     vtn_modsq.title("Modulos listos")
     vtn_modsq.resizable(False, False)
+    vtn_modsq.update_idletasks()
     vtn_modsq.attributes('-fullscreen', True)
     vtn_modsq.focus_set()
+    vtn_modsq.protocol("WM_DELETE_WINDOW", quad_cierre)
     ##Widgets
     rdtbn_mod1=tk.Radiobutton(vtn_modsq, text=mods_listos[0],
                               variable=quad_mod, value=1,font=("Arial", 20))
@@ -161,10 +199,13 @@ def aprender_quad():
 def practicar(modulo):
     global mod_info
     mod_info={}
+    print(mods_listos)
     serial_t=None
     if modulo!=0:
+        modulo = mods_listos[modulo - 1]
+        print(modulo)
         try:
-            modulo = mods_listos[modulo-1]
+
             xl_file=pd.ExcelFile('directorio.xlsx')
             tipos=pd.read_excel(xl_file, sheet_name=modulo).iloc[0]["Tipo de puertos"]
             nombre_ptos=pd.read_excel(xl_file,sheet_name=modulo).iloc[0]["Nombre de puertos"]
@@ -180,7 +221,9 @@ def practicar(modulo):
             if serial_t==1:
                 serial_terminal()
             else:'''
+            print("Si llega aqui")
             if vtn_tabla_mod==None:
+                modulo=0
                 leer_mod(mod_info)
                 print(modulo)
             '''if vtn_pdf==None:
@@ -208,17 +251,29 @@ def puertos_i2c():
     for elements in mods:
         if elements > 70:
             mods_l.append(elements)
-    mods_l=mods_l[0::2]
+    #mods_l=mods_l[0::2]
     return mods_l
 
 def leer_mod(mod_info):
+    def tabla_cierre():
+        global vtn_tabla_mod
+        global vtn_modsq
+        cierre_apertura(vtn_tabla_mod, vtn_menu)
+        vtn_modsq.destroy()
+        vtn_modsq=None
+        vtn_tabla_mod=None
     global index_item
     global tabla
     global vtn_tabla_mod
+    vtn_modsq.withdraw()
     vtn_tabla_mod=tk.Toplevel(vtn_modsq)
     vtn_tabla_mod.geometry(pi_window_size)
     vtn_tabla_mod.resizable(False,False)
     vtn_tabla_mod.title("Tabla")
+    vtn_tabla_mod.update_idletasks()
+    vtn_tabla_mod.attributes('-fullscreen', True)
+    vtn_tabla_mod.focus_set()
+    vtn_tabla_mod.protocol("WM_DELETE_WINDOW", tabla_cierre)
     lista=list()
     for i in range(0,mod_info['numero']):
         lista.append('na')
@@ -307,100 +362,15 @@ def act_mods(mods):
 ##############################################################################################################
 ###Para ingresar informacion sobre modulos o temas
 def tbd2():
-    print("calale")
-    ###Para añadir documentacion
-    global f, nombre_entry, lbl_doc_status, mem_nombre_entry, file_entry,puerto_entry
-    global doc_var
-    doc_var= IntVar()
-    try:
-        f=open("modulos.txt", "r")
-    except:
-        f=None
-    vtn_docu_crear=tk.Toplevel(vtn_menu)
-    vtn_docu_crear.geometry(pi_window_size)
-    vtn_docu_crear.title("Control de documentacion")
-    ###widgets
-    lbl_bienvenida=tk.Label(vtn_docu_crear, text="Bienvenido")
-    lbl_nombre=tk.Label(vtn_docu_crear, text="Nombre del modulo")
-    lbl_mem_nombre=tk.Label(vtn_docu_crear, text="Identificador en la memoria")
-    lbl_puertos=tk.Label(vtn_docu_crear, text="Puertos: ")
-    lbl_file=tk.Label(vtn_docu_crear, text="Archivo asociado")
-    nombre_entry=tk.Entry(vtn_docu_crear, width=50)
-    mem_nombre_entry=tk.Entry(vtn_docu_crear, width=50)
-    file_entry=tk.Entry(vtn_docu_crear, width=50)
-    puerto_entry=tk.Entry(vtn_docu_crear,width=50)
-    btn_buscar=tk.Button(vtn_docu_crear, text="Buscar", command=buscar_ref)
-    btn_crear=tk.Button(vtn_docu_crear, text="Crear..", command=crear_ref)
-    lbl_doc_status = tk.Label(vtn_docu_crear, text="")
-    rdbtn_practica=tk.Radiobutton(vtn_docu_crear, text="Practicas",
-                                  variable=doc_var, value=1)
-    rdbtn_tema=tk.Radiobutton(vtn_docu_crear, text="Temas",
-                              variable=doc_var, value=2)
-    ###poner widgets
-    lbl_bienvenida.grid(column=5, row=0, columnspan=20, rowspan=2, padx=10)
-    lbl_nombre.grid(column=0, row=2,  rowspan=2)
-    nombre_entry.grid(column=0, row=4)
-    lbl_mem_nombre.grid(column=0, row=6, rowspan=2)
-    mem_nombre_entry.grid(column=0, row=8)
-    lbl_file.grid(column=0, row=10, rowspan=2)
-    file_entry.grid(column=0, row=12)
-    lbl_puertos.grid(column=0, row=14)
-    puerto_entry.grid(column=0, row=16)
-
-    btn_buscar.place(relx=0.2, rely=0.9, anchor="center")
-    btn_crear.place(relx=0.8, rely=0.9, anchor="center")
-    rdbtn_tema.place(relx=0.5, rely=0.8, anchor="center")
-    rdbtn_practica.place(relx=0.7, rely=0.8, anchor="center")
-    lbl_doc_status.place(relx=0.4, rely=0.9, anchor="center")
+    ##Registro de modulos, informacion extra
+    pxl.vtn_crear_xl(vtn_menu)
     ##Posible añadir preview
 ##############################################################################################################
 ###Buscar archivos
-def buscar_ref():
-    print("Ahorita buscamos padre")
-    if f:
-        mod_g=open("modulos.txt", "r")
-        mod_guardados=mod_g.readlines()
-        for mods in mod_guardados:
-            if mods==nombre_entry.get():
-                lbl_doc_status.config(text="Ya existe")
-                break
-    else:
-        lbl_doc_status.config(text="Aun no existe")
+
 ##############################################################################################################
 ###Crear archivos de referencia, por ahora solo cuenta con indice, falta crear temas y practicas
-def crear_ref():
-    print("gestiono")
-    nombre=nombre_entry.get()
-    memoria=mem_nombre_entry.get()
-    archivo_ref=file_entry.get()
-    puerto=puerto_entry.get()
-    try:
-        f=open("Modulos_registrados.txt", "r")
-    except:
-        f=None
-        print("Aun no esta listo")
-    if f:
-        f.close()
-        indice=open(indice_txt, "a")
-        indice.write(f"\n{nombre}")
-        indice.close()
-        try:
-            f=open(f"{nombre}.txt", "w")
-        except:
-            f=open(f"{nombre}", "x")
-        f.writelines(f"{memoria}\n{archivo_ref}\n{puerto}")
-        f.close()
-    else:
-        if (memoria and nombre and archivo_ref):
-            indice=open(indice_txt, "x")
-            indice.write(nombre)
-            indice.close()
-            archivo=open(f"{nombre}.txt", "x")
-            archivo.writelines(f"{memoria}\n{archivo_ref}\n{puerto}")
-            archivo.close()
-            lbl_doc_status.config(text="Datos guardados")
-        else:
-            lbl_doc_status.config(text="Rellena los campos por favor")
+
 ##############################################################################################################
 """
  __  .__   __.      _______.___________..______       __    __  .___  ___.    
@@ -419,6 +389,10 @@ def crear_ref():
 """
 ###Menu de instrumentacion
 def instru():
+    def ins_cierre():
+        global vtn_instru_menu
+        cierre_apertura(vtn_instru_menu, vtn_menu)
+        vtn_instru_menu=None
     print("Dr profesor patricio")
     global vtn_instru_menu
     vtn_menu.withdraw()
@@ -430,6 +404,7 @@ def instru():
     vtn_instru_menu.update_idletasks()
     vtn_instru_menu.attributes('-fullscreen', True)
     vtn_instru_menu.focus_set()
+    vtn_instru_menu.protocol("WM_DELETE_WINDOW", ins_cierre)
     ###Imagenes
     global multi_icon
     global osc_icon
@@ -474,42 +449,55 @@ def instru():
 ##############################################################################################################
 ###Multimetro
 def multimetro():
+    def cerrar_multi():
+        global vtn_multi
+        cierre_apertura(vtn_multi, vtn_instru_menu)
+        vtn_multi=None
     vtn_instru_menu.withdraw()
     print("Hola aqui va el multimetro")
     global lbl_lectura
+    global vtn_multi
+    global gen_vtn
     global var
-    vtn_multi=tk.Toplevel(vtn_instru_menu)
-    vtn_multi.geometry(pi_window_size)
-    vtn_multi.title("Multimetro")
-    vtn_multi.resizable(False, False)
-    vtn_multi.update_idletasks()
-    vtn_multi.attributes('-fullscreen', True)
-    vtn_multi.focus_set()
-    var=IntVar()
-    ###Widgets
-    rb_Voltaje=tk.Radiobutton(vtn_multi, text="Voltaje",
-                              variable=var, value=1)
-    rb_Corriente=tk.Radiobutton(vtn_multi, text="Corriente",
-                                variable=var, value=2)
-    rb_resistencia=tk.Radiobutton(vtn_multi, text="Resistencia",
-                                  variable=var, value=3)
-    rb_continuidad=tk.Radiobutton(vtn_multi, text="Continuidad",
-                                  variable=var, value=4)
-    lbl_lectura=tk.Label(vtn_multi, text="Lectura", font=("Arial",30))
+    if vtn_multi==None:
+        vtn_multi=tk.Toplevel(vtn_instru_menu)
+        vtn_multi.geometry(pi_window_size)
+        vtn_multi.title("Multimetro")
+        vtn_multi.resizable(False, False)
+        vtn_multi.update_idletasks()
+        vtn_multi.attributes('-fullscreen', True)
+        vtn_multi.focus_set()
+        vtn_multi.protocol("WM_DELETE_WINDOW", cerrar_multi)
+        var = IntVar()
+        ###Widgets
+        rb_Voltaje = tk.Radiobutton(vtn_multi, text="Voltaje",
+                                    variable=var, value=1)
+        rb_Corriente = tk.Radiobutton(vtn_multi, text="Corriente",
+                                      variable=var, value=2)
+        rb_resistencia = tk.Radiobutton(vtn_multi, text="Resistencia",
+                                        variable=var, value=3)
+        rb_continuidad = tk.Radiobutton(vtn_multi, text="Continuidad",
+                                        variable=var, value=4)
+        lbl_lectura = tk.Label(vtn_multi, text="Lectura", font=("Arial", 30))
 
-    btn_gen= tk.Button(vtn_multi, text="Generador", command=generador)
-    btn_osc=tk.Button(vtn_multi, text="Osciloscopio", command=osciloscopio)
-    btn_docs= tk.Button(vtn_multi, text="Apuntes", command=docs)
-    ###Colocar widgets
-    lbl_lectura.place(relx=0.5, rely=0.5, anchor='center')
-    rb_Voltaje.place(relx=0.2, rely=0.8, anchor= 'center')
-    rb_resistencia.place(relx=0.4, rely=0.8, anchor= 'center')
-    rb_Corriente.place(relx=0.6, rely=0.8, anchor= 'center')
-    rb_continuidad.place(relx=0.8, rely=0.8, anchor="center")
-    btn_gen.place(relx=0.95, rely=0.1, anchor='ne')
-    btn_osc.place(relx=0.95, rely=0.2, anchor='ne')
-    btn_docs.place(relx=0.95, rely=0.3, anchor='ne')
-    multi_lectura(4)
+        btn_gen = tk.Button(vtn_multi, text="Generador", command=generador)
+        btn_osc = tk.Button(vtn_multi, text="Osciloscopio", command=osciloscopio)
+        btn_docs = tk.Button(vtn_multi, text="Apuntes", command=docs)
+        ###Colocar widgets
+        lbl_lectura.place(relx=0.5, rely=0.5, anchor='center')
+        rb_Voltaje.place(relx=0.2, rely=0.8, anchor='center')
+        rb_resistencia.place(relx=0.4, rely=0.8, anchor='center')
+        rb_Corriente.place(relx=0.6, rely=0.8, anchor='center')
+        rb_continuidad.place(relx=0.8, rely=0.8, anchor="center")
+        btn_gen.place(relx=0.95, rely=0.1, anchor='ne')
+        btn_osc.place(relx=0.95, rely=0.2, anchor='ne')
+        btn_docs.place(relx=0.95, rely=0.3, anchor='ne')
+        multi_lectura(4)
+    else:
+        vtn_multi.deiconify()
+        if gen_vtn!=None:
+            gen_vtn.withdraw()
+
 ##############################################################################################################
 ###Selector de opciones del multimetro
 def multi_lectura(boton):
@@ -549,26 +537,21 @@ def multi_lectura(boton):
 ###Informacion del osciloscopio, probablemente se elimine y se use la ventana de pdf
 def osciloscopio():
     print("Hola, soy scoopy")
-    vtn_osc=tk.Toplevel(vtn_instru_menu)
-    vtn_osc.geometry(pi_window_size)
-    vtn_osc.title("Como usar scoopy")
-    vtn_osc.resizable(False, False)
-    vtn_osc.attributes('-fullscreen', True)
-    vtn_osc.focus_set()
-    txt_usame=tk.Text(vtn_osc, width=45, height=15)
-
-    btn_multi=tk.Button(vtn_osc, text="Multimetro", command=multimetro)
-    btn_gen=tk.Button(vtn_osc, text="Generador", command=generador)
-    btn_docs=tk.Button(vtn_osc, text="Apuntes", command=docs)
-
-    btn_gen.place(relx=0.95, rely=0.1, anchor='ne')
-    btn_multi.place(relx=0.95, rely=0.2, anchor='ne')
-    btn_docs.place(relx=0.95, rely=0.3, anchor='ne')
-    txt_usame.grid(column=0, row=0)
-    txt_usame.insert("1.0","Soy la documentacion")
+    scopy_pdf='DummyPractice.pdf'
+    leer_pdf(scopy_pdf, 0)
 ##############################################################################################################
 ###Generador de funciones
 def generador():
+    def apagar_gen():
+        global generador
+        if generador==None:
+            seno()
+            generador=1
+        funciones.enviar_comando("a".encode('utf-8'))
+    def cerrar_generador():
+        global gen_vtn
+        cierre_apertura(gen_vtn, vtn_instru_menu)
+        gen_vtn=None
     vtn_instru_menu.withdraw()
     ###La amplitud no se puede controlar
     global lbl_generador
@@ -576,53 +559,83 @@ def generador():
     global signal
     global flecha_arriba
     global flecha_abajo
+    global on_off
+    global sin
+    global tri
+    global quad
+    global gen_vtn
     print("Hola soy un generador")
-    gen_vtn=tk.Toplevel(vtn_instru_menu)
-    gen_vtn.geometry(pi_window_size)
-    gen_vtn.title("Calibre 50")
-    gen_vtn.resizable(False, False)
-    gen_vtn.update_idletasks()
-    gen_vtn.attributes('-fullscreen', True)
-    gen_vtn.focus_set()
-    ###Iconos
-    flecha_arriba=tk.PhotoImage(file="angulo-pequeno-hacia-arriba.png")
-    flecha_abajo=tk.PhotoImage(file="angulo-hacia-abajo.png")
-    ##Widgets
-    lbl_generador= tk.Label(gen_vtn,
-                            text="Generador",
-                            font=("Arial", 20))
-    btn_sin_sel=tk.Button(gen_vtn, text="Sin", command=seno)
-    btn_tri_sel=tk.Button(gen_vtn, text="Triangular", command=triangular)
-    btn_sqr_sel=tk.Button(gen_vtn, text="Cuadrada", command=sqr_w)
-    lbl_tmp=tk.Label(gen_vtn, text="aguantala", font=("Arial", 10))
-    btn_multi=tk.Button(gen_vtn, text="Multimetro", command=multimetro, width=10)
-    btn_osc=tk.Button(gen_vtn, text="Osciloscopio", command=osciloscopio, width=10)
-    btn_docs=tk.Button(gen_vtn, text="Apuntes", command=docs, width=10)
-    btn_subir=tk.Button(gen_vtn, command=frec_aumentar)
-    btn_bajar=tk.Button(gen_vtn, command=frec_bajar)
-    ###Añadir iconos
-    btn_subir.config(image=flecha_arriba, compound=tk.TOP)
-    btn_bajar.config(image=flecha_abajo, compound=tk.TOP)
-    btn_sin_sel.config(width=10)
-    btn_sqr_sel.config(width=10)
-    btn_tri_sel.config(width=10)
-    frec_gen=1000
-    signal="Senoidal"
-    ##Poner widgets
-    lbl_generador.grid(column=10, row=5, columnspan=20, rowspan=10)
-    btn_sqr_sel.grid(column=0, row= 30, columnspan=10, rowspan=2, padx=2)
-    btn_sin_sel.grid(column=10, row=30, columnspan=10, rowspan=2, padx=2)
-    btn_tri_sel.grid(column=20, row=30, columnspan=10, rowspan=2, padx=2)
-    btn_subir.grid(column=0, row=35, columnspan=2)
-    btn_bajar.grid(column=3, row=35, columnspan=2)
-    btn_multi.place(relx=0.95, rely=0.1, anchor="ne")
-    btn_osc.place(relx=0.95, rely=0.2, anchor="ne")
-    btn_docs.place(relx=0.95, rely=0.3, anchor="ne")
+    if gen_vtn==None:
+        gen_vtn=tk.Toplevel(vtn_instru_menu)
+        gen_vtn.geometry(pi_window_size)
+        gen_vtn.title("Calibre 50")
+        gen_vtn.resizable(False, False)
+        gen_vtn.update_idletasks()
+        gen_vtn.attributes('-fullscreen', True)
+        gen_vtn.focus_set()
+        gen_vtn.protocol("WM_DELETE_WINDOW", cerrar_generador)
+        ###Iconos
+        flecha_arriba=tk.PhotoImage(file="angulo-pequeno-hacia-arriba.png")
+        flecha_abajo=tk.PhotoImage(file="angulo-hacia-abajo.png")
+        on_off=tk.PhotoImage(file="boton-de-encendido.png")
+        sin=tk.PhotoImage(file="sin.png")
+        tri=tk.PhotoImage(file="triangulo-de-onda.png")
+        quad=tk.PhotoImage(file="cuadrada_sen.png")
+        ##Widgets
+        lbl_generador= tk.Label(gen_vtn,
+                                text="Generador",
+                                font=("Arial", 20))
+        lbl_frecuencia_UD=tk.Label(gen_vtn,
+                                   text="Ajuste de frecuencia",
+                                   font=("Arial", 14))
+        btn_sin_sel=tk.Button(gen_vtn, text="Sin", command=seno)
+        btn_tri_sel=tk.Button(gen_vtn, text="Triangular", command=triangular)
+        btn_sqr_sel=tk.Button(gen_vtn, text="Cuadrada", command=sqr_w)
+        lbl_tmp=tk.Label(gen_vtn, text="aguantala", font=("Arial", 10))
+        btn_multi=tk.Button(gen_vtn, text="Multimetro", command=multimetro, width=10)
+        btn_osc=tk.Button(gen_vtn, text="Osciloscopio", command=osciloscopio, width=10)
+        btn_docs=tk.Button(gen_vtn, text="Apuntes", command=docs, width=10)
+        btn_subir=tk.Button(gen_vtn, command=frec_aumentar)
+        btn_bajar=tk.Button(gen_vtn, command=frec_bajar)
+        btn_apagar_gen = tk.Button(gen_vtn, command=apagar_gen)
+        ###Añadir iconos
+        btn_apagar_gen.config(image=on_off, compound=tk.LEFT)
+        btn_subir.config(image=flecha_arriba, compound=tk.TOP)
+        btn_bajar.config(image=flecha_abajo, compound=tk.TOP)
+        btn_sin_sel.config(width=10, image=sin, compound=tk.LEFT)
+        btn_sqr_sel.config(width=10, image=quad, compound=tk.LEFT)
+        btn_tri_sel.config(width=10, image=quad, compound=tk.LEFT)
+        frec_gen=1000
+        signal="Senoidal"
+        ##Poner widgets
+        #lbl_generador.grid(column=10, row=5, columnspan=20, rowspan=10)
+        #btn_sqr_sel.grid(column=0, row= 30, columnspan=10, rowspan=2, padx=2)
+        #btn_sin_sel.grid(column=10, row=30, columnspan=10, rowspan=2, padx=2)
+        #btn_tri_sel.grid(column=20, row=30, columnspan=10, rowspan=2, padx=2)
+        #btn_subir.grid(column=0, row=35, columnspan=2)
+        #btn_bajar.grid(column=3, row=35, columnspan=2)
+        lbl_generador.place(relx=0.45, rely=0.1, anchor='center')
+        btn_apagar_gen.place(relx=0.1, rely=0.1, anchor='center')
+        lbl_frecuencia_UD.place(relx=0.2, rely=0.3, anchor='center')
+        btn_subir.place(relx=0.6, rely=0.3, anchor='center')
+        btn_bajar.place(relx=0.65, rely=0.3, anchor='center')
+        btn_sqr_sel.place(relx=0.45, rely=0.5, anchor='center')
+        btn_sin_sel.place(relx=0.45, rely=0.7, anchor='center')
+        btn_tri_sel.place(relx=0.45, rely=0.9, anchor='center')
+        btn_multi.place(relx=0.95, rely=0.1, anchor="ne")
+        btn_osc.place(relx=0.95, rely=0.2, anchor="ne")
+        btn_docs.place(relx=0.95, rely=0.3, anchor="ne")
+    else:
+        gen_vtn.deiconify()
+        if vtn_multi!=None:
+            vtn_multi.withdraw()
 ##############################################################################################################
 ###Funciones del generador
 def seno():
     print("Saca un seno")
     global  signal
+    global generador
+    generador=1
     frec=str(frec_gen)
     frec=frec.encode('utf-8')
     signal="Senoidal"
@@ -640,6 +653,8 @@ def seno():
 
 def triangular():
     global signal
+    global generador
+    generador=1
     signal="Triangular"
     texto=f"Triangular {frec_gen}Hz"
     print("Soy un triangulo :)")
@@ -657,6 +672,8 @@ def triangular():
     funciones.enviar_comando(frec)
 
 def sqr_w():
+    global generador
+    generador=1
     frec=str(frec_gen)
     frec=frec.encode('utf-8')
     global signal
@@ -703,62 +720,44 @@ def docs():
     Combobox o lista
     Modificar, podria hacer con dos ventanas, una de eleccion de tema y despues ir al lector PDF
     '''
-    print("Aqui va la documentacion")
-    global lbl_elegir
-    if tema=="TBD":
-        global docs_var
-        docs_var=IntVar()
-        vtn_docs_menu=tk.Toplevel(vtn_menu)
-        vtn_docs_menu.geometry(pi_window_size)
-        vtn_docs_menu.title("Documentacion")
-        vtn_docs_menu.resizable(False, False)
-        ###Menu de eleccion de tema
-        lbl_elegir=tk.Label(vtn_docs_menu, text="Elige si quieres \nrepasar un tema\n o hacer una practica")
-        rbtn_practica=tk.Radiobutton(vtn_docs_menu, text="Practicas",
-                                     variable=docs_var, value=1)
-        rbtn_Temas=tk.Radiobutton(vtn_docs_menu, text="Temas",
-                                  variable=docs_var, value=2)
-        #Colocar widgets
-        lbl_elegir.pack(side="top")
-        rbtn_practica.place(relx=0.1, rely=0.2, anchor="center")
-        rbtn_Temas.place(relx=0.9, rely=0.2, anchor="center")
-        doc_menu(0)
-    else:
-        opcion=0
-        vtn_apunte=tk.Toplevel(vtn_menu)
-        vtn_apunte.geometry(pi_window_size)
-        vtn_apunte.title(tema)
-        ###Widgets
-        txt_apunte=tk.Text(vtn_apunte,width=40, height=20)
-        btn_atras=tk.Button(vtn_apunte, text="Atras", command=doc_atras)
-        btn_adelante=tk.Button(vtn_apunte, text="Siguiente", command=doc_adelante)
-        ###Poner widgets
-        txt_apunte.grid(column=0, row=0, columnspan=40, rowspan=20)
-        btn_atras.grid(column=5, row= 30)
-        btn_adelante.grid(column=10, row=30)
-        ###Insertar texto
+    def abrir_archivo(event):
+        try:
+            item_sel=documentos.selection()[0]
+        except IndexError:
+            return
+        direccion=pd.read_excel(file_xl, sheet_name=item_sel).iloc[0]["Documento de referencia"]
+        leer_pdf(direccion, 0)
+    vtn_menu.withdraw()
+    vtn_docs=tk.Toplevel(vtn_menu)
+    vtn_docs.geometry("480x320")
+    vtn_docs.title("Documentos")
+    vtn_docs.resizable(False,False)
+    vtn_docs.update_idletasks()
+    vtn_docs.attributes('-fullscreen', True)
+    documentos=ttk.Treeview(vtn_docs, takefocus=1)
+    lbl_info=tk.Label(vtn_docs, text="Aqui encontraras"
+                                     "informacion sobre"
+                                     "las practicas")
+    lbl_info.place(relx=0.5, rely=0.2, anchor='center')
+    documentos.place(relx=0.5,rely=0.6, anchor='center')
+    documentos.focus_set()
+    referencia='directorio.xlsx'
+    try:
+        file_xl=pd.ExcelFile(referencia)
+        practicas=file_xl.sheet_names
+    except FileNotFoundError:
+        print("No se encontro archivo de referencia")
+    except Exception as e:
+        print("Error al procesar archivo")
+    for elements in practicas:
+        documentos.insert(parent="", index="end", iid=elements, text=elements)
+
 ##############################################################################################################
-###Rellena el menu con temas o practicas
-def doc_menu(boton):
-    if boton==0:
-        print("Aun no")
-    elif boton==2:
-        lbl_elegir.config(text="Temones")
-    elif boton==1:
-        lbl_elegir.config(text="Practiconas")
-    lbl_elegir.after(300, doc_menu, docs_var.get())
-
-def doc_adelante():
-    print("Adelante")
-
-def doc_atras():
-    print("Atras")
 
 ######################################################################################################3
 def serial_terminal_practica():
     def enviar():
         global comandos
-
         mensaje=cb_practicas.get()
         match mensaje:
             case '1':
@@ -808,16 +807,23 @@ def serial_terminal_practica():
             cb_practicas.current(current_index+1)
 
         return "break"
+    def serial_cierre():
+        global vtn_serial
+        cierre_apertura(vtn_serial, vtn_tabla_mod)
+        vtn_serial=None
+
     practicas=['1', '2', '3', '4', '5', 'info']
     global comandos
     comandos=[]
+    vtn_menu.withdraw()
     vtn_serial=tk.Toplevel(vtn_menu)
     vtn_serial.geometry(pi_window_size)
     vtn_serial.title("Monitor serial")
     vtn_serial.resizable(False, False)
-    vtn_serial.config(bg='black')
+    vtn_serial.update_idletasks()
+    vtn_serial.attributes('-fullscreen', True)
     arduino=s_test.config_terminal()
-
+    vtn_serial.protocol("WM_DELETE_WINDOW", serial_cierre)
     serial_caja = tk.Text(vtn_serial, width=55, height=15, takefocus=0)
     cb_practicas=ttk.Combobox(vtn_serial, values=practicas)
     cb_practicas.set("Elige una practica...")
@@ -826,6 +832,7 @@ def serial_terminal_practica():
     act_terminal(arduino)
     serial_caja.pack()
     cb_practicas.pack()
+    cb_practicas.focus_set()
     btn_enviar.pack(after=cb_practicas)
 
 
@@ -905,44 +912,51 @@ def bienvenida():
 
     main_vtn.geometry(pi_window_size)
     main_vtn.title("Bienvenida")
+    main_vtn.config(bg='white')
     main_vtn.resizable(False, False)
     main_vtn.attributes('-fullscreen', True)
     main_vtn.focus_set()
     ###Etiquetas
     lbl_bienvenido = tk.Label(main_vtn,
                               text="BIENVENIDO",
-                              font=("Arial", 16))
+                              font=("Arial", 16),
+                              bg='white')
     lbl_status = tk.Label(main_vtn,
                           text=stats,
-                          font=("Arial", 12))
+                          font=("Arial", 12),
+                          bg='white')
     lbl_blogo = tk.Label(image=logo)
     ###Posicionamiento de widgets
     lbl_bienvenido.grid(column=10, row=1, columnspan=3, rowspan=3, padx=180)
     lbl_blogo.grid(column=10, row=5, padx=90)
     lbl_status.grid(column=10, row=100, padx=100)
 
-    act_status(10, 0)
+    act_status("Cargando..")
 
     main_vtn.mainloop()
 
-def act_status(cont, cin):
+def act_status(paso):
     '''
     Establecer comunicacion con la Pico por UART
     I2C scan para identificar los componentes en la red i2c, memorias(modulos) y multi
     Verificar archivos correspondientes a los modulos
     '''
-    if cin < cont:
-        cin += 1
-        lbl_status.config(text=str(cin))
-        lbl_status.after(1000, act_status, cont, cin)
+    global tele_pico
+    lbl_status.config(text=paso)
+    if tele_pico==None:
+        funciones.enviar_comando(b'hi')
+        tele_pico=funciones.recibir_lectura()
+        lbl_status.after(1000, act_status, tele_pico)
     else:
-        lbl_status.config(text="Listo")
+        time.sleep(2)
+        lbl_status.config(text="Sistema listo...")
         crear_btn_inicio()
 
 def crear_btn_inicio():
     btn_inicio=tk.Button(main_vtn,
                          text="Iniciar",
-                         command=inicio)
+                         command=inicio,
+                         bg='white')
     btn_inicio.grid(column=10, row=102)
 
 def inicio():

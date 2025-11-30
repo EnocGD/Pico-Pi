@@ -1,4 +1,5 @@
 ###Excel test
+from secrets import token_bytes
 
 import pandas as pd
 import tkinter as tk
@@ -93,8 +94,9 @@ def arbolito(headers, n_elementos):
     print(index_item)
     arbolon.mainloop()
 
-def vtn_crear_xl():
-    xl_vtn=tk.Tk()
+def vtn_crear_xl(vtn_main):
+    xl_vtn=tk.Toplevel(vtn_main)
+    vtn_main.withdraw()
     xl_vtn.geometry(window_size)
     xl_vtn.title("Excel prueba")
     global ent_nombre
@@ -143,8 +145,14 @@ def vtn_crear_xl():
     btn_crea.pack()
     xl_vtn.mainloop()
 
-vtn_crear_xl()
-#print(leer_mod_xl("Digitales"))
-'''headers=leer_mod_xl("Micros")['nombre']
-numero=leer_mod_xl('Micros')['numero']
-arbolito(headers, numero)'''
+
+def vtn_externa():
+    vtn_aux=tk.Tk()
+    vtn_aux.title("Crear excel")
+    vtn_aux.geometry("480x340")
+    vtn_aux.resizable(False,False)
+    btn_fuga=tk.Button(vtn_aux, text="Vamos", command=lambda: vtn_crear_xl(vtn_aux))
+    btn_fuga.pack()
+    vtn_aux.mainloop()
+
+vtn_externa()
