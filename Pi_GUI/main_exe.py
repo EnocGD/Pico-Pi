@@ -12,7 +12,7 @@ import s_test
 import pico_funciones as pico
 import funciones
 import pxl
-from pxl import xl_name
+
 
 tele_pico=None
 vtn_pdf=None
@@ -26,7 +26,7 @@ vtn_tabla_mod=None
 vtn_mods=None
 vtn_serial=None
 vtn_modsq=None
-
+vtn_docs=None
 generador=None
 modulo=0
 ###Variables
@@ -151,17 +151,19 @@ def menu_aprender():
     vtn_lect_mods.focus_set()
     ###vtn_menu.withdraw()
     lbl_buscar=tk.Label(vtn_lect_mods,
-                        text="Buscando...",
+                        text="Leyendo modulos",
                         font=("Arial", 22))
     lbl_buscar.place(relx=0.5, rely=0.5, anchor='center')
-    act_mods("Buscando")
+    #act_mods("Buscando")
+    lbl_buscar.after(1000, act_mods, "Buscando")
 ##############################################################################################################
 ###Cuadricula con modulos
 def aprender_quad():
     def quad_cierre():
         global vtn_lect_mods
         global vtn_modsq
-        cierre_apertura(vtn_modsq,vtn_menu)
+        vtn_modsq.destroy()
+        vtn_menu.deiconify()
         vtn_lect_mods.destroy()
         vtn_lect_mods=None
         vtn_modsq=None
@@ -176,16 +178,16 @@ def aprender_quad():
     vtn_modsq.resizable(False, False)
     vtn_modsq.update_idletasks()
     vtn_modsq.attributes('-fullscreen', True)
-    vtn_modsq.focus_set()
     vtn_modsq.protocol("WM_DELETE_WINDOW", quad_cierre)
+    vtn_modsq.focus_set()
     ##Widgets
-    rdtbn_mod1=tk.Radiobutton(vtn_modsq, text=mods_listos[0],
+    rdtbn_mod1=tk.Radiobutton(vtn_modsq, text=f"Slot 1\n{mods_listos[0]}",
                               variable=quad_mod, value=1,font=("Arial", 20))
-    rdtbn_mod2=tk.Radiobutton(vtn_modsq, text=mods_listos[1],
+    rdtbn_mod2=tk.Radiobutton(vtn_modsq, text=f"Slot 2\n{mods_listos[1]}",
                               variable=quad_mod, value=2,font=("Arial", 20))
-    rdtbn_mod3=tk.Radiobutton(vtn_modsq, text=mods_listos[2],
+    rdtbn_mod3=tk.Radiobutton(vtn_modsq, text=f"Slot 3\n{mods_listos[2]}",
                               variable=quad_mod, value=3,font=("Arial", 20))
-    rdtbn_mod4=tk.Radiobutton(vtn_modsq, text=mods_listos[3],
+    rdtbn_mod4=tk.Radiobutton(vtn_modsq, text=f"Slot 4\n{mods_listos[3]}",
                               variable=quad_mod, value=4, font=("Arial", 20))
 
     practicar(0)
@@ -203,7 +205,6 @@ def practicar(modulo):
     serial_t=None
     if modulo!=0:
         modulo = mods_listos[modulo - 1]
-        print(modulo)
         try:
 
             xl_file=pd.ExcelFile('directorio.xlsx')
@@ -213,7 +214,8 @@ def practicar(modulo):
             ref_doc=pd.read_excel(xl_file, sheet_name=modulo).iloc[0]["Documento de referencia"]
             mod_info['nombre']=nombre_ptos.split('\n')
             mod_info['tipos']=tipos.split('\n')
-            mod_info['numero']=int(numero_ptos)
+            mod_info['numero']=numero_ptos
+
             mod_info['doc']=ref_doc
             '''for puerto in mod_info['tipos']:
                 if puerto=='Serie':
@@ -223,13 +225,12 @@ def practicar(modulo):
             else:'''
             print("Si llega aqui")
             if vtn_tabla_mod==None:
-                modulo=0
                 leer_mod(mod_info)
                 print(modulo)
             '''if vtn_pdf==None:
                 leer_pdf(modulo, 0)'''
         except:
-            print("Modulo no identificado")
+            print("Aqui no es")
     if modulo==0:
         print("nada")
     elif modulo==1:
@@ -272,9 +273,11 @@ def leer_mod(mod_info):
     vtn_tabla_mod.title("Tabla")
     vtn_tabla_mod.update_idletasks()
     vtn_tabla_mod.attributes('-fullscreen', True)
-    vtn_tabla_mod.focus_set()
     vtn_tabla_mod.protocol("WM_DELETE_WINDOW", tabla_cierre)
+    vtn_tabla_mod.focus_set()
     lista=list()
+    print("Aqui mero")
+
     for i in range(0,mod_info['numero']):
         lista.append('na')
     columnas=('Puerto', 'Valor')
@@ -282,6 +285,7 @@ def leer_mod(mod_info):
     tabla=ttk.Treeview(vtn_tabla_mod, columns=columnas, show='headings')
     tabla.heading('Puerto', text="Nombre de puerto")
     tabla.heading('Valor', text='Valor')
+    print(mod_info)
     for Puerto, Valor in zip(mod_info['nombre'], lista):
         valores_tabla= (Puerto, Valor)
         item_id=tabla.insert(parent='', index='end', values=valores_tabla)
@@ -333,7 +337,7 @@ def act_mods(mods):
     #mods_listos=["Vacio", "Vacio", "Vacio", "Vacio"]
     if mods== "Buscando":
         lbl_buscar.config(text="Buscando")
-        lbl_buscar.after(5000, act_mods, pico.nop())
+        lbl_buscar.after(1000, act_mods, pico.nop())
         modulongos=puertos_i2c()
         time.sleep(1)
         for elements in modulongos:
@@ -349,7 +353,9 @@ def act_mods(mods):
             elif elements==p4:
                 mods_listos[3] = (funciones.recibir_lectura_nb().decode('utf-8', errors='ignore')).split("\xff")[0].strip()
             else:
-                mods_listos.append((funciones.recibir_lectura_nb()).decode('utf-8', errors='ignore')).split("\xff")[0].strip()
+                print("Nadota")
+                #aprender_quad()
+                #mods_listos.append((funciones.recibir_lectura_nb()).decode('utf-8', errors='ignore')).split("\xff")[0].strip()
             time.sleep(1)
     elif mods=="Esperando":
         lbl_buscar.config(text="Conectando...")
@@ -403,8 +409,8 @@ def instru():
     vtn_instru_menu.resizable(False, False)
     vtn_instru_menu.update_idletasks()
     vtn_instru_menu.attributes('-fullscreen', True)
-    vtn_instru_menu.focus_set()
     vtn_instru_menu.protocol("WM_DELETE_WINDOW", ins_cierre)
+    vtn_instru_menu.focus_set()
     ###Imagenes
     global multi_icon
     global osc_icon
@@ -727,6 +733,11 @@ def docs():
     Combobox o lista
     Modificar, podria hacer con dos ventanas, una de eleccion de tema y despues ir al lector PDF
     '''
+    def cerrar_doc():
+        global vtn_docs
+        cierre_apertura(vtn_docs, vtn_menu)
+        vtn_docs=None
+
     def abrir_archivo(event):
         try:
             item_sel=documentos.selection()[0]
@@ -734,6 +745,7 @@ def docs():
             return
         direccion=pd.read_excel(file_xl, sheet_name=item_sel).iloc[0]["Documento de referencia"]
         leer_pdf(direccion, 0)
+    global vtn_docs
     vtn_menu.withdraw()
     vtn_docs=tk.Toplevel(vtn_menu)
     vtn_docs.geometry("480x320")
@@ -743,10 +755,11 @@ def docs():
     vtn_docs.attributes('-fullscreen', True)
     documentos=ttk.Treeview(vtn_docs, takefocus=1)
     lbl_info=tk.Label(vtn_docs, text="Aqui encontraras"
-                                     "informacion sobre"
-                                     "las practicas")
+                                     " informacion sobre"
+                                     " las practicas")
     lbl_info.place(relx=0.5, rely=0.2, anchor='center')
     documentos.place(relx=0.5,rely=0.6, anchor='center')
+    vtn_docs.protocol("WM_DELETE_WINDOW", cerrar_doc)
     documentos.focus_set()
     referencia='directorio.xlsx'
     try:
@@ -1006,7 +1019,7 @@ def crear_main_vtn():
                        text="Aprendamos",
                        command=menu_aprender,width=220, height=150)
     btn_tbd2=tk.Button(vtn_menu,
-                       text="TBD2",
+                       text="Registro de modulos",
                        command=tbd2,width=220, height=150)
     btn_ins=tk.Button(vtn_menu,
                       text="Instrumentacion",
