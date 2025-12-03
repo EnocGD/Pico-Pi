@@ -553,7 +553,7 @@ def osciloscopio():
     scopy_pdf='DummyPractice.pdf'
     leer_pdf(scopy_pdf, 0)
 ##############################################################################################################
-###Generador de funciones
+
 def generador():
     def apagar_gen():
         global generador
@@ -577,6 +577,8 @@ def generador():
     global tri
     global quad
     global gen_vtn
+    global escala
+    escala=IntVar()
     print("Hola soy un generador")
     if gen_vtn==None:
         gen_vtn=tk.Toplevel(vtn_instru_menu)
@@ -608,6 +610,9 @@ def generador():
         btn_multi=tk.Button(gen_vtn, text="Multimetro", command=multimetro, width=10)
         btn_osc=tk.Button(gen_vtn, text="Osciloscopio", command=osciloscopio, width=10)
         btn_docs=tk.Button(gen_vtn, text="Apuntes", command=docs, width=10)
+        rbtn_100=tk.Radiobutton(gen_vtn, text="x100Hz", variable=escala, value=100)
+        rbtn_1k=tk.Radiobutton(gen_vtn, text="x1kHZ", variable=escala, value=1000)
+        rbtn_10k = tk.Radiobutton(gen_vtn, text="x10kHz", variable=escala, value=10000)
         btn_subir=tk.Button(gen_vtn, command=frec_aumentar)
         btn_bajar=tk.Button(gen_vtn, command=frec_bajar)
         btn_apagar_gen = tk.Button(gen_vtn, command=apagar_gen)
@@ -627,17 +632,20 @@ def generador():
         #btn_tri_sel.grid(column=20, row=30, columnspan=10, rowspan=2, padx=2)
         #btn_subir.grid(column=0, row=35, columnspan=2)
         #btn_bajar.grid(column=3, row=35, columnspan=2)
-        lbl_generador.place(relx=0.45, rely=0.1, anchor='center')
-        btn_apagar_gen.place(relx=0.1, rely=0.1, anchor='center')
-        lbl_frecuencia_UD.place(relx=0.35, rely=0.3, anchor='center')
-        btn_subir.place(relx=0.6, rely=0.3, anchor='center')
-        btn_bajar.place(relx=0.65, rely=0.3, anchor='center')
-        btn_sqr_sel.place(relx=0.2, rely=0.5, anchor='w')
-        btn_sin_sel.place(relx=0.2, rely=0.7, anchor='w')
+        lbl_generador.place(relx=0.45, rely=0.2, anchor='center')
+        btn_apagar_gen.place(relx=0.1, rely=0.2, anchor='center')
+        lbl_frecuencia_UD.place(relx=0.35, rely=0.35, anchor='center')
+        rbtn_100.place(relx=0.1, rely=0.45, anchor='center')
+        rbtn_1k.place(relx=0.3, rely=0.45, anchor="center")
+        rbtn_10k.place(relx=0.5, rely=0.45, anchor='center')
+        btn_subir.place(relx=0.6, rely=0.45, anchor='center')
+        btn_bajar.place(relx=0.65, rely=0.45, anchor='center')
+        btn_sqr_sel.place(relx=0.2, rely=0.6, anchor='w')
+        btn_sin_sel.place(relx=0.2, rely=0.8, anchor='w')
         btn_tri_sel.place(relx=0.2, rely=0.9, anchor='w')
-        btn_multi.place(relx=0.95, rely=0.1, anchor="ne")
-        btn_osc.place(relx=0.95, rely=0.2, anchor="ne")
-        btn_docs.place(relx=0.95, rely=0.3, anchor="ne")
+        btn_multi.place(relx=0.1, rely=0.1, anchor="ne")
+        btn_osc.place(relx=0.5, rely=0.1, anchor="ne")
+        btn_docs.place(relx=0.75, rely=0.1, anchor="ne")
     else:
         gen_vtn.deiconify()
         if vtn_multi!=None:
@@ -706,7 +714,8 @@ def sqr_w():
 
 def frec_aumentar():
     global frec_gen
-    frec_gen+= 10
+
+    frec_gen+= escala.get()
     frec=str(frec_gen)
     frec=frec.encode('utf-8')
     texto=f"{signal} {frec_gen}Hz"
@@ -717,7 +726,7 @@ def frec_aumentar():
 
 def frec_bajar():
     global frec_gen
-    frec_gen-=10
+    frec_gen-=escala.get()
     frec=str(frec_gen)
     frec=frec.encode('utf-8')
     texto=f"{signal} {frec_gen}Hz"
