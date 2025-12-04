@@ -728,6 +728,8 @@ def frec_aumentar():
 def frec_bajar():
     global frec_gen
     frec_gen-=escala.get()
+    if frec_gen<100:
+        frec_gen=100
     frec=str(frec_gen)
     frec=frec.encode('utf-8')
     texto=f"{signal} {frec_gen}Hz"
