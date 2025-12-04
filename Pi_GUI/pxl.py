@@ -155,4 +155,3 @@ def vtn_externa():
     btn_fuga.pack()
     vtn_aux.mainloop()
 
-vtn_externa()

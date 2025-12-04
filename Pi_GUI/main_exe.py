@@ -46,6 +46,7 @@ p3=83
 mod_info={}
 tabla_ref={}
 pi_window_size="480x320+0+0"
+
 ###Funciones
 """
  __       _______   ______ .___________.  ______   .______      
@@ -88,12 +89,12 @@ def leer_pdf(ruta,pagina):
     vtn_pdf.attributes('-fullscreen', True)
     vtn_pdf.protocol("WM_DELETE_WINDOW", cerrar_pdf)
     ###Primera hoja
-    img_tk = ImageTk.PhotoImage(pdf2img("DummyPracticePPTX.pdf", 0))
+    img_tk = ImageTk.PhotoImage(pdf2img(ruta, pagina))
     lbl_pdf = tk.Label(vtn_pdf, image=img_tk)
     lbl_pdf.image = img_tk
     ###Botones
-    btn_atras=tk.Button(vtn_pdf, text="Atras", command=pdf_atras)
-    btn_adelante=tk.Button(vtn_pdf, text="Adelante", command=pdf_adelante)
+    btn_atras=tk.Button(vtn_pdf, text="<", command=lambda :pdf_atras(ruta))
+    btn_adelante=tk.Button(vtn_pdf, text=">", command=lambda :pdf_adelante(ruta))
     ###Posicionamiento de botones
     btn_atras.place(relx=0.2, rely=0.9, anchor="center")
     btn_adelante.place(relx=0.8, rely=0.9, anchor="center")
@@ -101,25 +102,25 @@ def leer_pdf(ruta,pagina):
     lbl_pdf.pack()
 ##############################################################################################################
 ###Botones PDF
-def pdf_adelante():
+def pdf_adelante(ruta):
     global pag_cont
     if pag_cont==pag_total:
         print("Ya no hay mas padrino")
     else:
         print("Dondevan")
         pag_cont+=1
-        img_tk=ImageTk.PhotoImage(pdf2img("DummyPracticePPTX.pdf", pag_cont))
+        img_tk=ImageTk.PhotoImage(pdf2img(ruta, pag_cont))
         lbl_pdf.config(image=img_tk)
         lbl_pdf.image=img_tk
 ##############################################################################################################
-def pdf_atras():
+def pdf_atras(ruta):
     global pag_cont
     if pag_cont==0:
         print("No hay mas atras")
     else:
         print("Dondevan")
         pag_cont -= 1
-        img_tk = ImageTk.PhotoImage(pdf2img("DummyPracticePPTX.pdf", pag_cont))
+        img_tk = ImageTk.PhotoImage(pdf2img(ruta, pag_cont))
         lbl_pdf.config(image=img_tk)
         lbl_pdf.image = img_tk
 ##############################################################################################################
@@ -632,20 +633,20 @@ def generador():
         #btn_tri_sel.grid(column=20, row=30, columnspan=10, rowspan=2, padx=2)
         #btn_subir.grid(column=0, row=35, columnspan=2)
         #btn_bajar.grid(column=3, row=35, columnspan=2)
-        lbl_generador.place(relx=0.45, rely=0.2, anchor='center')
-        btn_apagar_gen.place(relx=0.1, rely=0.2, anchor='center')
+        lbl_generador.place(relx=0.45, rely=0.25, anchor='center')
+        btn_apagar_gen.place(relx=0.1, rely=0.25, anchor='center')
         lbl_frecuencia_UD.place(relx=0.35, rely=0.35, anchor='center')
         rbtn_100.place(relx=0.1, rely=0.45, anchor='center')
         rbtn_1k.place(relx=0.3, rely=0.45, anchor="center")
         rbtn_10k.place(relx=0.5, rely=0.45, anchor='center')
-        btn_subir.place(relx=0.6, rely=0.45, anchor='center')
-        btn_bajar.place(relx=0.65, rely=0.45, anchor='center')
+        btn_subir.place(relx=0.65, rely=0.45, anchor='center')
+        btn_bajar.place(relx=0.7, rely=0.45, anchor='center')
         btn_sqr_sel.place(relx=0.2, rely=0.6, anchor='w')
-        btn_sin_sel.place(relx=0.2, rely=0.8, anchor='w')
-        btn_tri_sel.place(relx=0.2, rely=0.9, anchor='w')
-        btn_multi.place(relx=0.1, rely=0.1, anchor="ne")
-        btn_osc.place(relx=0.5, rely=0.1, anchor="ne")
-        btn_docs.place(relx=0.75, rely=0.1, anchor="ne")
+        btn_sin_sel.place(relx=0.2, rely=0.7, anchor='w')
+        btn_tri_sel.place(relx=0.2, rely=0.8, anchor='w')
+        btn_multi.place(relx=0.2, rely=0.1, anchor="center")
+        btn_osc.place(relx=0.5, rely=0.1, anchor="center")
+        btn_docs.place(relx=0.75, rely=0.1, anchor="center")
     else:
         gen_vtn.deiconify()
         if vtn_multi!=None:
@@ -752,9 +753,26 @@ def docs():
             item_sel=documentos.selection()[0]
         except IndexError:
             return
+        print(item_sel)
         direccion=pd.read_excel(file_xl, sheet_name=item_sel).iloc[0]["Documento de referencia"]
+        print(direccion)
         leer_pdf(direccion, 0)
+
+    def sel_item(event):
+        elemento_actual = documentos.focus()
+        children_id = documentos.get_children()
+        if not children_id:
+            return
+        first_item = children_id[0]
+        u_item = children_id[-1]
+        if elemento_actual == u_item:
+            print(first_item)
+            documentos.selection_set(first_item)
+            documentos.focus(first_item)
+            documentos.see(first_item)
+            return "break"
     global vtn_docs
+    global documentos
     vtn_menu.withdraw()
     vtn_docs=tk.Toplevel(vtn_menu)
     vtn_docs.geometry("480x320")
@@ -763,6 +781,8 @@ def docs():
     vtn_docs.update_idletasks()
     vtn_docs.attributes('-fullscreen', True)
     documentos=ttk.Treeview(vtn_docs, takefocus=1)
+    documentos.bind('<Return>', abrir_archivo)
+    documentos.bind('<Down>', sel_item)
     lbl_info=tk.Label(vtn_docs, text="Aqui encontraras"
                                      " informacion sobre"
                                      " las practicas")
@@ -780,7 +800,10 @@ def docs():
         print("Error al procesar archivo")
     for elements in practicas:
         documentos.insert(parent="", index="end", iid=elements, text=elements)
-
+    documentos.selection_set(practicas[0])
+    documentos.focus(practicas[0])
+    documentos.see(practicas[0])
+    documentos.focus_set()
 ##############################################################################################################
 
 ######################################################################################################3
